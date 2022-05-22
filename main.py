@@ -23,5 +23,5 @@ if __name__ == "__main__":
 
     logging.info(reddit["user_agent"])
 
-    mod = moderator.Moderator(reddit)
+    mod = moderator.Moderator(reddit=reddit, settings_default=settings_default)
     mod.run()
