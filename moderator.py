@@ -7,32 +7,34 @@ import praw
 
 class Moderator:
     def __init__(self,
-                 reddit,
+                 config_reddit,
+                 config_settings,
+                 config_db,
                  subreddit="Animewallpaper",
                  limit=100,
                  refresh=60,
-                 name="animewallpaperbot",
-                 settings_default=None):
+                 name="animewallpaperbot"):
         self.settings = None
-        self.reddit = praw.Reddit(**reddit)
+        self.reddit = praw.Reddit(**config_reddit)
         self.subreddit = self.reddit.subreddit(subreddit)
         self.unmoderated = self.subreddit.mod.unmoderated
         self.spam = self.subreddit.mod.spam
         self.limit = limit
         self.refresh = refresh
         self.name = name
-        self.settings_default = {} if settings_default is None else settings_default
+        self.config_settings = config_settings
+        self.config_db = config_db
         logging.info("Moderator created.")
 
     def update_settings(self):
         if self.name not in list(page.name for page in self.subreddit.wiki):
             self.subreddit.wiki.create(
                 name=self.name,
-                content=json.dumps(self.settings_default),
+                content=json.dumps(self.config_settings),
                 reason="Set/reset default settings"
             )
             logging.info("Settings page created.")
-        self.settings = self.settings_default.update(json.loads(self.subreddit.wiki[self.name].content_md))
+        self.settings = self.config_settings.update(json.loads(self.subreddit.wiki[self.name].content_md))
         logging.info("Settings updated.")
 
     def handle_unmoderated(self):
