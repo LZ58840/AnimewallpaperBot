@@ -1,6 +1,8 @@
 import argparse
+import errno
 import json
 import logging
+import sys
 
 import moderator
 
@@ -19,7 +21,9 @@ if __name__ == "__main__":
     except FileNotFoundError:
         print("Couldn't open the reddit configuration file. "
               "Please ensure the file `config_reddit.json` is in the ./config directory. "
-              "You may need to complete and rename the example file `config_reddit_example.json`.")
+              "You may need to complete and rename the example file `config_reddit_example.json`.",
+              file=sys.stderr)
+        sys.exit(errno.ENOENT)
 
     try:
         with open("config/config_settings.json") as settings_json:
@@ -27,7 +31,9 @@ if __name__ == "__main__":
     except FileNotFoundError:
         print("Couldn't open the default settings configuration file. "
               "Please ensure the file `config_settings.json` is in the ./config directory. "
-              "You may need to complete and rename the example file `config_settings_example.json`.")
+              "You may need to complete and rename the example file `config_settings_example.json`.",
+              file=sys.stderr)
+        sys.exit(errno.ENOENT)
 
     try:
         with open("config/config_db.json") as db_json:
@@ -35,7 +41,9 @@ if __name__ == "__main__":
     except FileNotFoundError:
         print("Couldn't open the database configuration file. "
               "Please ensure the file `config_db.json` is in the ./config directory. "
-              "You may need to run `init.sh` to set up the configuration.")
+              "You may need to run `init.sh` to set up the configuration.",
+              file=sys.stderr)
+        sys.exit(errno.ENOENT)
 
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
