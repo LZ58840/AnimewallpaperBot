@@ -34,7 +34,7 @@ class Moderator:
                 reason="Set/reset default settings"
             )
             logging.info("Settings page created.")
-        self.settings = self.config_settings.update(json.loads(self.subreddit.wiki[self.name].content_md))
+        self.settings = self.config_settings.update_submissions(json.loads(self.subreddit.wiki[self.name].content_md))
         logging.info("Settings updated.")
 
     def handle_unmoderated(self):
