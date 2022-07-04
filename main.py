@@ -3,17 +3,21 @@ import errno
 import json
 import logging
 import sys
+import time
 
+import aggregator
 import moderator
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-v', '--verbose', action='store_true', help="enable verbose/debugging mode")
+parser.add_argument('refresh', help="refresh interval in seconds", type=int)
 
 
 if __name__ == "__main__":
     args = parser.parse_args()
     verbose = args.verbose
+    refresh = args.refresh
 
     try:
         with open("config/config_reddit.json") as reddit_json:
@@ -47,10 +51,17 @@ if __name__ == "__main__":
 
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
-        format="%(asctime)s %(levelname)s: %(message)s"
+        format="%(asctime)s [%(levelname)s] %(message)s"
     )
 
     logging.info(config_reddit["user_agent"])
 
-    mod = moderator.Moderator(config_reddit=config_reddit, config_settings=config_settings, config_db=config_db)
-    mod.run()
+    agg = aggregator.Aggregator(config_reddit=config_reddit, config_db=config_db)
+    # mod = moderator.Moderator(config_reddit=config_reddit, config_settings=config_settings, config_db=config_db)
+    # mod.run()
+
+    while True:
+        logging.debug("Refreshing...")
+        agg.update()
+        logging.debug(f"Operations completed. Next refresh in {refresh} seconds.")
+        time.sleep(refresh)

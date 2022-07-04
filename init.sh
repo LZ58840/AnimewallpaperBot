@@ -18,6 +18,6 @@ SETUP
 
 json_conf='{"user": "animewallpaperbot", "password":"'"$bot_pass"'", "database": "animewallpaper"}'
 
-echo "$json_conf" > config_db.json
-echo "The generated credentials for the bot is stored in ./db.json"
+echo "$json_conf" > config/config_db.json
+echo "The generated credentials for the bot is stored in ./config/config_db.json"
 echo "Setup successful."
