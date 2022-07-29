@@ -53,3 +53,7 @@ class Refresher:
             return 3
         else:
             return 0
+
+    @classmethod
+    def get_default_refresher(cls, config_reddit, config_db):
+        return cls(config_reddit, config_db)

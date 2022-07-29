@@ -10,7 +10,7 @@ class CuratorManager:
     def get_new_submissions(self, subreddit_ctx):
         new_submissions = []
         for curator in self.curator_map:
-            self.curator_map[curator]._get_submissions(subreddit_ctx)
+            self.curator_map[curator].update(subreddit_ctx)
             new_submissions.extend(self.curator_map[curator].get_submissions())
         return new_submissions
 

@@ -4,12 +4,11 @@ from data.extractor.reddit_extractor import RedditExtractor
 
 
 class ExtractorManager:
-    def __init__(self, config_reddit, max_tries=1, extractor_map=None):
+    def __init__(self, config_reddit, extractor_map=None):
         self.config_reddit = config_reddit
         self.extractor_map = {} if extractor_map is None else extractor_map
-        self.max_tries = max_tries
 
-    def get_new_images(self, submissions):
+    def extract_new_images(self, submissions):
         new_images = []
         for submission in submissions:
             submission_url, submission_id = submission[1], submission[0]
@@ -20,7 +19,7 @@ class ExtractorManager:
     def _extract_images(self, url):
         for extractor in self.extractor_map:
             if match := self.extractor_map[extractor].match_regex(url):
-                return self.extractor_map[extractor].extract_images(url, match)
+                return self.extractor_map[extractor].extract_new_images(url, match)
 
     @staticmethod
     def _get_imgur_extractor():

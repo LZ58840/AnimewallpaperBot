@@ -12,8 +12,8 @@ CREATE TABLE IF NOT EXISTS submission (
     author VARCHAR(20) NOT NULL ,
     created INT NOT NULL ,
     removed INT NOT NULL DEFAULT 0 ,
-    tries INT NOT NULL DEFAULT 0,
-    tries_at INT ,
+    extracted INT NOT NULL DEFAULT 0,
+    updated_at INT ,
 
     FOREIGN KEY (subreddit)
         REFERENCES subreddit(name)
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS image (
     url VARCHAR(255) NOT NULL ,
     submission_id VARCHAR(10) NOT NULL ,
     downloaded INT NOT NULL DEFAULT 0 ,
-    downloaded_at INT ,
+    updated_at INT ,
     width INT NOT NULL DEFAULT -1,
     height INT NOT NULL DEFAULT -1,
 
