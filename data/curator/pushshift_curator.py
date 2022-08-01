@@ -12,18 +12,20 @@ class PushshiftCurator(Curator):
         self.submission_queries = None
         self.limit = limit
         self.max_expiry = max_expiry
+
+        self.log = logging.getLogger(__name__)
+        self.log.debug("PushshiftCurator created.")
         logging.getLogger("pmaw").setLevel(logging.WARNING)
-        logging.debug("PushshiftCurator created.")
 
     def update(self, subreddit_ctx):
-        logging.debug("Updating Pushshift results...")
+        self.log.debug("Updating Pushshift results...")
         self.submission_queries = []
         for row in subreddit_ctx:
             subreddit = row["name"]
             after_utc = int(time.time()) - self.max_expiry if row["updated"] is None else row["updated"]
             submission_query = list(self.ps.search_submissions(after=after_utc, subreddit=subreddit, limit=self.limit))
             self.submission_queries.extend(submission_query)
-        logging.debug(f"Detected {len(self.submission_queries)} new results.")
+        self.log.debug(f"Detected {len(self.submission_queries)} new results.")
 
     def get_submissions(self):
         return [

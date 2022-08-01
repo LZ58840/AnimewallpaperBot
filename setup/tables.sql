@@ -24,10 +24,12 @@ CREATE TABLE IF NOT EXISTS image (
     id INT AUTO_INCREMENT PRIMARY KEY ,
     url VARCHAR(255) NOT NULL ,
     submission_id VARCHAR(10) NOT NULL ,
-    downloaded INT NOT NULL DEFAULT 0 ,
+    encoded INT NOT NULL DEFAULT 0 ,
     updated_at INT ,
     width INT NOT NULL DEFAULT -1,
     height INT NOT NULL DEFAULT -1,
+
+    UNIQUE KEY (url, submission_id),
 
     FOREIGN KEY (submission_id)
         REFERENCES submission(id)
@@ -36,9 +38,18 @@ CREATE TABLE IF NOT EXISTS image (
 
 CREATE TABLE IF NOT EXISTS 4histogram (
     id INT PRIMARY KEY ,
-    red JSON NOT NULL ,
-    green JSON NOT NULL ,
-    blue JSON NOT NULL ,
+    red_1 INT NOT NULL ,
+    red_2 INT NOT NULL ,
+    red_3 INT NOT NULL ,
+    red_4 INT NOT NULL ,
+    green_1 INT NOT NULL ,
+    green_2 INT NOT NULL ,
+    green_3 INT NOT NULL ,
+    green_4 INT NOT NULL ,
+    blue_1 INT NOT NULL ,
+    blue_2 INT NOT NULL ,
+    blue_3 INT NOT NULL ,
+    blue_4 INT NOT NULL ,
 
     FOREIGN KEY (id)
         REFERENCES image(id)

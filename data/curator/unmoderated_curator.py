@@ -10,10 +10,11 @@ class UnmoderatedCurator(Curator):
         self.reddit = praw.Reddit(**config_reddit)
         self.submission_queries = None
         self.limit = limit
-        logging.debug("UnmoderatedCurator created.")
+        self.log = logging.getLogger(__name__)
+        self.log.debug("UnmoderatedCurator created.")
 
     def update(self, subreddit_ctx):
-        logging.debug("Updating Reddit unmoderated results...")
+        self.log.debug("Updating Reddit unmoderated results...")
         self.submission_queries = []
         for row in subreddit_ctx:
             subreddit = row["name"]
@@ -21,7 +22,7 @@ class UnmoderatedCurator(Curator):
             submission_query = list(self.reddit.subreddit(subreddit).mod.unmoderated(limit=self.limit))
             latest_query = list(filter(lambda obj: int(obj.created_utc) > after_utc, submission_query))
             self.submission_queries.extend(latest_query)
-        logging.debug(f"Detected {len(self.submission_queries)} new results.")
+        self.log.debug(f"Detected {len(self.submission_queries)} new results.")
 
     def get_submissions(self):
         return [

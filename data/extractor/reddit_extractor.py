@@ -1,3 +1,5 @@
+import logging
+
 import praw
 from prawcore import Forbidden
 
@@ -10,6 +12,7 @@ class RedditExtractor(Extractor):
 
     def __init__(self, reddit_config):
         self.reddit = praw.Reddit(**reddit_config)
+        self.log = logging.getLogger(__name__)
 
     def extract_images(self, url, match=None):
         match = self.match_regex(url) if match is None else match
@@ -33,6 +36,7 @@ class RedditExtractor(Extractor):
 
             except (AttributeError, TypeError, Forbidden):
                 # Mark 404 and 403 request errors as failed
+                self.log.warning(f"Failed to extract {url}, skipping...")
                 return None
 
         return result

@@ -16,7 +16,8 @@ class Refresher:
         self.select_submission_sql = 'select id from submission where created>%s'
         self.update_submission_sql = 'update submission set removed=%s where id=%s'
 
-        logging.debug("Refresher created.")
+        self.log = logging.getLogger(__name__)
+        self.log.debug("Refresher created.")
 
     def update(self):
         submission_ctx = self._get_submission_ctx()
@@ -24,16 +25,16 @@ class Refresher:
         submissions = self.reddit.info(submission_names)
         updated_attributes = [(self._get_submission_status(s), s.id) for s in submissions]
         with database_ctx(self.config_db) as db:
-            logging.debug(f"Updating {len(updated_attributes)} submissions...")
+            self.log.debug(f"Updating {len(updated_attributes)} submissions...")
             db.executemany(self.update_submission_sql, updated_attributes)
 
     def _get_submission_ctx(self):
-        logging.debug(f"Getting submissions from the last {self.max_expiry} seconds...")
+        self.log.debug(f"Getting submissions from the last {self.max_expiry} seconds...")
         after_utc = int(time.time()) - self.max_expiry
         with database_ctx(self.config_db) as db:
             db.execute(self.select_submission_sql, after_utc)
             rows = db.fetchall()
-        logging.debug(f"Detected {len(rows)} submissions.")
+        self.log.debug(f"Detected {len(rows)} submissions.")
         return rows
 
     @staticmethod

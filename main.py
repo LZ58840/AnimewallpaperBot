@@ -5,7 +5,6 @@ import logging
 import sys
 import time
 
-from data.refresher import Refresher
 from data import DataManager
 
 parser = argparse.ArgumentParser()
@@ -50,19 +49,17 @@ if __name__ == "__main__":
 
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
-        format="%(asctime)s [%(levelname)s] [%(module)s] %(message)s"
+        format="%(asctime)s [%(levelname)s] %(message)s [%(name)s]"
     )
 
     logging.info(config_reddit["user_agent"])
 
     dm = DataManager(config_reddit=config_reddit, config_db=config_db)
-    rf = Refresher(config_reddit=config_reddit, config_db=config_db)
     # mod = moderator.Moderator(config_reddit=config_reddit, config_settings=config_settings, config_db=config_db)
     # mod.run()
 
     while True:
         logging.debug("Refreshing...")
         dm.update()
-        rf.update()
         logging.debug(f"Operations completed. Next refresh in {refresh} seconds.")
         time.sleep(refresh)

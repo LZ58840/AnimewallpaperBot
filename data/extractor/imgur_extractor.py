@@ -1,3 +1,4 @@
+import logging
 from json import JSONDecodeError
 
 import requests
@@ -10,6 +11,7 @@ class ImgurExtractor(Extractor):
     _regex = r"(^(http|https):\/\/)?(i\.)?imgur.com\/((?P<gallery>gallery\/)(?P<galleryid>\w+)|(?P<album>a\/)(?P<albumid>\w+)#?)?(?P<imgid>\w*)"
     _url = "https://api.imgur.com/3"
     _headers = {"Authorization": f"Client-ID {'IMGUR_CLIENT_ID'}"}
+    log = logging.getLogger(__name__)
 
     def extract_images(self, url, match=None):
         match = self.match_regex(url) if match is None else match
@@ -36,6 +38,7 @@ class ImgurExtractor(Extractor):
             response = requests.get(url=request_url, headers=self._headers)
 
             if response.status_code != 200:
+                self.log.warning(f"Failed to grab {request_url}, skipping...")
                 return None
 
             response_json = response.json()
@@ -55,6 +58,7 @@ class ImgurExtractor(Extractor):
                     result.append(response_json["data"]["extractor"])
 
         except (JSONDecodeError, KeyError, MissingSchema):
+            self.log.warning(f"Failed to extract {request_url}, skipping...")
             return None
 
         finally:

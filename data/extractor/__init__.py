@@ -1,3 +1,5 @@
+import logging
+
 from data.extractor.generic_extractor import GenericExtractor
 from data.extractor.imgur_extractor import ImgurExtractor
 from data.extractor.reddit_extractor import RedditExtractor
@@ -7,19 +9,22 @@ class ExtractorManager:
     def __init__(self, config_reddit, extractor_map=None):
         self.config_reddit = config_reddit
         self.extractor_map = {} if extractor_map is None else extractor_map
+        self.log = logging.getLogger(__name__)
+        self.log.debug("ExtractorManager created.")
 
     def extract_new_images(self, submissions):
+        self.log.debug("Extracting images from submissions...")
         new_images = []
         for submission in submissions:
-            submission_url, submission_id = submission[1], submission[0]
-            if extracted_images := self._extract_images(submission_url) is not None:
-                new_images.extend([(link, submission[0]) for link in extracted_images])
+            if (extracted_images := self._extract_images(submission["url"])) is not None:
+                new_images.extend([(link, submission["id"]) for link in extracted_images])
         return new_images
 
     def _extract_images(self, url):
         for extractor in self.extractor_map:
             if match := self.extractor_map[extractor].match_regex(url):
-                return self.extractor_map[extractor].extract_new_images(url, match)
+                self.log.debug(f"{url} is of type {extractor}, extracting...")
+                return self.extractor_map[extractor].extract_images(url, match)
 
     @staticmethod
     def _get_imgur_extractor():

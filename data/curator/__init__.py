@@ -1,3 +1,5 @@
+import logging
+
 from data.curator.pushshift_curator import PushshiftCurator
 from data.curator.unmoderated_curator import UnmoderatedCurator
 
@@ -6,8 +8,11 @@ class CuratorManager:
     def __init__(self, config_reddit, curator_map=None):
         self.config_reddit = config_reddit
         self.curator_map = {} if curator_map is None else curator_map
+        self.log = logging.getLogger(__name__)
+        self.log.debug("CuratorManager created.")
 
     def get_new_submissions(self, subreddit_ctx):
+        self.log.debug("Collecting new submissions...")
         new_submissions = []
         for curator in self.curator_map:
             self.curator_map[curator].update(subreddit_ctx)

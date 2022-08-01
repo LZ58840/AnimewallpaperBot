@@ -1,3 +1,5 @@
+import logging
+
 from data.extractor.extractor import Extractor
 
 
