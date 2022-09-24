@@ -1,0 +1,39 @@
+version: '3.8'
+
+# https://adithya.dev/docker-secrets-with-mysql-in-docker-compose/
+# https://docs.docker.com/compose/environment-variables/
+
+services:
+  mysql:
+    container_name: ${MYSQL_DOCKER_HOST?err}
+    image: mysql:8.0.29
+    restart: always
+    environment:
+      MYSQL_DATABASE: animewallpaper
+      MYSQL_USER: ${MYSQL_AWB_USER?err}
+      MYSQL_PASSWORD: ${MYSQL_AWB_PASS?err}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASS?err}
+    volumes:
+      - mysql:/var/lib/mysql
+    ports:
+      - "${MYSQL_PORT?err}:3306"
+    networks:
+      - awb
+
+  data-service:
+    container_name: awb-data-service
+    build:
+      context: ./
+      dockerfile: ./data-service/Dockerfile
+    restart: on-failure
+    networks:
+      - awb
+    depends_on:
+      - mysql
+
+volumes:
+  mysql:
+
+networks:
+  awb:
+    driver: bridge

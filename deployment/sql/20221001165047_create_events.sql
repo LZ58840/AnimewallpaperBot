@@ -1,3 +1,5 @@
+USE animewallpaper;
+
 CREATE EVENT IF NOT EXISTS
     ClearArchivedSubmissions
 ON SCHEDULE EVERY 1 DAY
