@@ -28,37 +28,37 @@ class DataService:
     def _get_new_submissions(self):
         subreddit_ctx = self._get_subreddit_ctx()
         new_submissions = self.cm.get_submissions(subreddit_ctx)
-        if len(new_submissions) > 0:
-            with database_ctx(self.configs["db"]) as db:
+        with database_ctx(self.configs["db"]) as db:
+            if len(new_submissions) > 0:
                 self.log.info(f"Collected {len(new_submissions)} new submissions. Adding...")
                 db.executemany('replace into submission(id,url,subreddit,author,created) values (%s,%s,%s,%s,%s)', new_submissions)
-                db.execute('update subreddit, (select subreddit, max(created) as updated from submission group by subreddit) latest set subreddit.updated=latest.updated where subreddit.name=latest.subreddit')
+            db.execute('update subreddit, (select subreddit, max(created) as updated from submission group by subreddit) latest set subreddit.updated=latest.updated where subreddit.name=latest.subreddit')
 
     def _extract_new_images(self):
         submission_ctx = self._get_submission_unextracted_ctx()
         new_images = self.xm.extract_images(submission_ctx)
-        if len(new_images) > 0:
-            with database_ctx(self.configs["db"]) as db:
+        with database_ctx(self.configs["db"]) as db:
+            if len(new_images) > 0:
                 self.log.info(f"Extracted {len(new_images)} new images. Adding...")
                 db.executemany('replace into image_metadata(url,submission_id) values (%s,%s)', new_images)
-                db.execute('update submission, (select submission.id as id, count(image_metadata.id) as result from submission left join image_metadata on submission.id=image_metadata.submission_id where submission.extracted=0 group by submission.id) extracted set submission.extracted=if(extracted.result!=0,1,-1) where submission.id=extracted.id')
+            db.execute('update submission, (select submission.id as id, count(image_metadata.id) as result from submission left join image_metadata on submission.id=image_metadata.submission_id where submission.extracted=0 group by submission.id) extracted set submission.extracted=if(extracted.result!=0,1,-1) where submission.id=extracted.id')
 
     def _encode_new_images(self):
         image_ctx = self._get_image_ctx()
         new_encoded_images = self.em.encode_images(image_ctx)
-        if len(new_encoded_images) > 0:
-            with database_ctx(self.configs["db"]) as db:
+        with database_ctx(self.configs["db"]) as db:
+            if len(new_encoded_images) > 0:
                 self.log.info(f"Encoded {len(new_encoded_images)} new images. Adding...")
                 db.executemany(self._get_insert_image_data_sql(new_encoded_images[0]), new_encoded_images)
-                db.execute('update image_metadata, (select image_metadata.id, exists(select image_data.id from image_data where image_data.id=image_metadata.id) as result from image_metadata) encoded set image_metadata.encoded=if(encoded.result,1,-1) where image_metadata.encoded=0 and image_metadata.id=encoded.id')
+            db.execute('update image_metadata, (select image_metadata.id, exists(select image_data.id from image_data where image_data.id=image_metadata.id) as result from image_metadata) encoded set image_metadata.encoded=if(encoded.result,1,-1) where image_metadata.encoded=0 and image_metadata.id=encoded.id')
 
     def _refresh_submissions(self):
         delta_utc = self.rf.get_delta_utc()
         submission_ctx = self._get_submission_delta_ctx(delta_utc)
         updated_submissions = self.rf.update_submissions(submission_ctx)
-        if len(updated_submissions) > 0:
-            with database_ctx(self.configs["db"]) as db:
-                self.log.info(f"Refreshed {len(updated_submissions)} submissions. Updating...")
+        with database_ctx(self.configs["db"]) as db:
+            if len(updated_submissions) > 0:
+                self.log.info(f"Refreshed {len(updated_submissions)} submissions.")
                 db.executemany('update submission set removed=%s where id=%s', updated_submissions)
 
     def _get_subreddit_ctx(self):
