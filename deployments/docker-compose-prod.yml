@@ -1,0 +1,97 @@
+version: '3.8'
+
+# https://adithya.dev/docker-secrets-with-mysql-in-docker-compose/
+# https://docs.docker.com/compose/environment-variables/
+# https://stackoverflow.com/a/42251266
+# https://stackoverflow.com/a/71771542
+
+services:
+  mysql:
+    container_name: awb_mysql
+    image: mysql:8.0.29
+    restart: always
+    environment:
+      MYSQL_DATABASE: awb
+      MYSQL_USER: animewallpaperbot
+      MYSQL_PASSWORD: ${MYSQL_PASS?err}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASS?err}
+    volumes:
+      - mysql:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - awb
+
+  rabbitmq:
+    container_name: awb_rabbitmq
+    image: rabbitmq:3.11-management
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: animewallpaperbot
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS?err}
+      RABBITMQ_PLUGINS_DIR: /opt/rabbitmq/plugins:/usr/lib/rabbitmq/plugins
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq
+      - ./rabbit/enabled_plugins:/etc/rabbitmq/enabled_plugins
+      - ./rabbit/plugins:/usr/lib/rabbitmq/plugins
+    networks:
+      - awb
+
+  data-service:
+    container_name: awb_data_service
+    build:
+      context: ..
+      dockerfile: ./data_service/Dockerfile
+    restart: on-failure
+    networks:
+      - awb
+    depends_on:
+      - mysql
+      - rabbitmq
+
+  data-worker:
+    container_name: awb_data_worker
+    build:
+      context: ..
+      dockerfile: ./data_worker/Dockerfile
+    restart: on-failure
+    networks:
+      - awb
+    depends_on:
+      - mysql
+      - rabbitmq
+
+  moderator-service:
+    container_name: awb_moderator_service
+    build:
+      context: ..
+      dockerfile: ./moderator_service/Dockerfile
+    restart: on-failure
+    networks:
+      - awb
+    depends_on:
+      - mysql
+      - rabbitmq
+
+  moderator-worker:
+    container_name: awb_moderator_worker
+    build:
+      context: ..
+      dockerfile: ./moderator_worker/Dockerfile
+    restart: on-failure
+    networks:
+      - awb
+    depends_on:
+      - mysql
+      - rabbitmq
+
+volumes:
+  mysql:
+  rabbitmq:
+
+networks:
+  awb:
+    driver: bridge

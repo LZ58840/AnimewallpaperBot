@@ -1,0 +1,46 @@
+version: '3.8'
+
+# https://adithya.dev/docker-secrets-with-mysql-in-docker-compose/
+# https://docs.docker.com/compose/environment-variables/
+# https://stackoverflow.com/a/42251266
+# https://stackoverflow.com/a/71771542
+
+services:
+  mysql:
+    container_name: awb_mysql
+    image: mysql:8.0.29
+    restart: always
+    environment:
+      MYSQL_DATABASE: awb
+      MYSQL_USER: animewallpaperbot
+      MYSQL_PASSWORD: ${MYSQL_PASS?err}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASS?err}
+    volumes:
+      - mysql_test:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - awb_test
+
+  rabbitmq:
+    container_name: awb_rabbitmq
+    image: rabbitmq:3.11-management
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: animewallpaperbot
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS?err}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_test:/var/lib/rabbitmq
+    networks:
+      - awb_test
+
+volumes:
+  mysql_test:
+  rabbitmq_test:
+
+networks:
+  awb_test:
+    driver: bridge
