@@ -35,7 +35,6 @@ async def extract_from_reddit_url(submission, image_id, gallery_id) -> list[str]
     if image_id is not None:
         return [f"https://i.redd.it/{image_id}"]
     elif gallery_id is not None:
-        logging.info(f"submission {submission.id} with gallery")
         try:
             return [
                 f"https://i.redd.it/{item['media_id']}.{submission.media_metadata[item['media_id']]['m'].split('/')[1]}"

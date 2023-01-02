@@ -258,15 +258,7 @@ class RuleBook:
     async def evaluate(self):
         tasks = [create_task(self._evaluate_with_rule(self.submission, name)) for name in active_rules]
         results = await gather(*tasks)
-        # results = await gather(*tasks, return_exceptions=True)
-        # self.comments = [str(result) for result in results if not isinstance(result, (BaseException, NoneType))]
-        for result in results:
-            if isinstance(result, BaseException):
-                # TODO: logging with info for each failed module
-                self.log.error(f"Evaluation failed with result {repr(result)}")
-                pass
-            elif result is not None:
-                self.comments.append(str(result))
+        self.comments = [str(result) for result in results if result is not None]
 
     async def _evaluate_with_rule(self, submission: Submission, name: str):
         if (got_rule := rule_from_name(name)(self.mysql_auth)) is not None:

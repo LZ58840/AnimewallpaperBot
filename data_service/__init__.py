@@ -20,10 +20,7 @@ class DataService:
         self.reddit_auth = get_reddit_auth()
         self.log = logging.getLogger(__name__)
 
-        self.log.debug("DataService created.")
-
     async def run(self):
-        self.log.debug("Creating RabbitMQ connection...")
         connection = await connect(**self.rabbitmq_auth)
         async with connection:
             async with connection.channel() as channel:
