@@ -39,10 +39,7 @@ class ModeratorWorker:
         self.reddit_auth = get_reddit_auth()
         self.log = logging.getLogger(__name__)
 
-        self.log.debug("ModeratorWorker created.")
-
     async def run(self):
-        self.log.debug("Creating RabbitMQ connection...")
         connection = await connect(**self.rabbitmq_auth)
         async with connection:
             async with connection.channel() as channel:
@@ -105,6 +102,7 @@ class ModeratorWorker:
                     await submission.mod.remove()
                     response.removed = True
                     response.comment_id = comment.id
+                    self.log.info(f"Removed submission {submission_id} from r/{submission.subreddit.display_name}")
                 await db.execute('UPDATE submissions SET moderated=TRUE WHERE id=%s', submission_id)
         response.status = ModeratorWorkerStatus.MODERATED
         return response

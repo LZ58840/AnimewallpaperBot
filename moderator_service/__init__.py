@@ -17,28 +17,6 @@ from yaml.scanner import ScannerError
 from utils import async_database_ctx, get_mysql_auth, get_rabbitmq_auth, get_reddit_auth, get_default_settings
 
 
-# class ModeratorServiceStatus(Enum):
-#     INITIALIZED = 0
-#     UPDATED = 1
-#     RESET = 2
-#     QUEUED = 3
-#     ERROR = 4
-#
-#
-# @dataclass
-# class ModeratorServiceSettingsResponse:
-#     updated: bool
-#     status: ModeratorServiceStatus = None
-#     subreddit: str = None
-#
-#
-# @dataclass
-# class ModeratorServiceQueueResponse:
-#     queued: bool
-#     status: ModeratorServiceStatus = None
-#     submission_id: str = None
-
-
 class ModeratorService:
     settings_page_name = "awb"
     exchange_name = "awb-exchange"
@@ -49,13 +27,9 @@ class ModeratorService:
         self.rabbitmq_auth = get_rabbitmq_auth(docker)
         self.reddit_auth = get_reddit_auth()
         self.default_settings = get_default_settings()
-        self.reddit = None
         self.log = logging.getLogger(__name__)
 
-        self.log.debug("ModeratorService created.")
-
     async def run(self):
-        self.log.debug("Creating RabbitMQ connection...")
         connection = await connect(**self.rabbitmq_auth)
         async with connection:
             async with connection.channel() as channel:

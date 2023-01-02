@@ -36,10 +36,7 @@ class DataWorker:
         self.headers = {"User-Agent": self.reddit_auth["user_agent"]}
         self.log = logging.getLogger(__name__)
 
-        self.log.debug("DataWorker created.")
-
     async def run(self):
-        self.log.debug("Creating RabbitMQ connection...")
         connection = await connect(**self.rabbitmq_auth)
         async with connection:
             async with connection.channel() as channel:
@@ -65,7 +62,6 @@ class DataWorker:
             self.log.error("Failed to retrieve submission %s from reddit: %s", submission_id, e)
 
     async def process_submission(self, submission_id: str):
-        self.log.info(f"Processing submission {submission_id}")
         async with Reddit(**self.reddit_auth, timeout=30) as reddit:
             submission: Submission = await reddit.submission(submission_id)
             subreddit: str = submission.subreddit.display_name
@@ -79,6 +75,7 @@ class DataWorker:
             async with async_database_ctx(self.mysql_auth) as db:
                 await db.execute('INSERT IGNORE INTO submissions(id,subreddit,created_utc,removed,deleted,approved) VALUES(%s,%s,%s,%s,%s,%s)', submission_values)
                 await db.executemany('INSERT IGNORE INTO images(submission_id,url,width,height) VALUES (%s,%s,%s,%s)', images_values)
+            self.log.info(f"Processed submission {submission_id} with {len(images_values)} images in r/{subreddit}")
 
     async def _process_images(self, submission: Submission) -> list[tuple[str, int, int] | Any]:
         urls = await self.extract_image_urls(submission)
