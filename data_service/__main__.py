@@ -12,7 +12,7 @@ parser.add_argument('-d', '--docker', action='store_true', help="run in Docker c
 args = parser.parse_args()
 verbose = args.verbose
 docker = args.docker
-mysql_delay = 40
+mysql_delay = 60
 
 logging.basicConfig(
     level=logging.DEBUG if verbose else logging.INFO,
