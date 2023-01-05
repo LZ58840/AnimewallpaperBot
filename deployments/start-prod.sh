@@ -15,7 +15,7 @@ docker-compose -f "$SCRIPT_DIR/docker-compose-prod.yml" up --build --detach --re
 echo "Waiting for MySQL to start up..."
 iter=0
 # shellcheck disable=SC2154
-while [ $iter -lt 30 ] && ! MYSQL_PWD=$MYSQL_ROOT_PASS mysqladmin ping -h"127.0.0.1" --port "3306" -u "root" --silent; do
+while [ $iter -lt 60 ] && ! MYSQL_PWD=$MYSQL_ROOT_PASS mysqladmin ping -h"127.0.0.1" --port "3306" -u "root" --silent; do
     sleep 1
     iter=$((iter + 1))
 done

@@ -13,15 +13,15 @@ args = parser.parse_args()
 verbose = args.verbose
 docker = args.docker
 
-mysql_delay = 20
+rabbit_delay = 20
 
 logging.basicConfig(
     level=logging.DEBUG if verbose else logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s [%(name)s]"
 )
 
-logging.debug(f"Waiting for MySQL to start up, sleeping for {mysql_delay} seconds...")
-time.sleep(mysql_delay)
+logging.debug(f"Waiting for RabbitMQ to start up, sleeping for {rabbit_delay} seconds...")
+time.sleep(rabbit_delay)
 
 dw = DataWorker(docker)
 
