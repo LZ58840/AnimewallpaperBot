@@ -13,15 +13,13 @@ args = parser.parse_args()
 verbose = args.verbose
 docker = args.docker
 
-mysql_delay = 60
-
 logging.basicConfig(
     level=logging.DEBUG if verbose else logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s [%(name)s]"
 )
 
-logging.debug(f"Waiting for MySQL to start up, sleeping for {mysql_delay} seconds...")
-time.sleep(mysql_delay)
+# Wait for DB and Moderator Worker to be ready
+time.sleep(60)
 
 ms = ModeratorService(docker)
 
