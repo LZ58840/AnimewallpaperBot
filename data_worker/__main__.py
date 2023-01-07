@@ -13,15 +13,13 @@ args = parser.parse_args()
 verbose = args.verbose
 docker = args.docker
 
-rabbit_delay = 20
-
 logging.basicConfig(
     level=logging.DEBUG if verbose else logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s [%(name)s]"
 )
 
-logging.debug(f"Waiting for RabbitMQ to start up, sleeping for {rabbit_delay} seconds...")
-time.sleep(rabbit_delay)
+# Wait for RabbitMQ to be ready
+time.sleep(20)
 
 dw = DataWorker(docker)
 
