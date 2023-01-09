@@ -1,12 +1,11 @@
 import asyncio
-import logging
 from hashlib import md5
 
 from asyncpraw import Reddit
-from asyncprawcore.exceptions import RequestException
+from asyncprawcore.exceptions import RequestException, ResponseException
 from aio_pika import DeliveryMode, Message, connect
 
-from utils import async_database_ctx, get_mysql_auth, get_rabbitmq_auth, get_reddit_auth
+from utils import async_database_ctx, get_mysql_auth, get_rabbitmq_auth, get_reddit_auth, get_logger
 
 
 class DataService:
@@ -18,7 +17,7 @@ class DataService:
         self.mysql_auth = get_mysql_auth(docker)
         self.rabbitmq_auth = get_rabbitmq_auth(docker)
         self.reddit_auth = get_reddit_auth()
-        self.log = logging.getLogger(__name__)
+        self.log = get_logger(self.__class__.__name__)
 
     async def run(self):
         connection = await connect(**self.rabbitmq_auth)
@@ -29,8 +28,10 @@ class DataService:
                     try:
                         new_submissions = await self._get_new_submissions()
                         await self.enqueue_new_submissions(exchange, new_submissions)
-                    except RequestException as e:
+                    except (RequestException, ResponseException) as e:
                         self.log.error("Failed to get submissions from reddit: %s", e)
+                    except Exception as e:
+                        self.log.exception("Unknown error: %s", e)
                     finally:
                         await asyncio.sleep(self.backoff_sec)
 

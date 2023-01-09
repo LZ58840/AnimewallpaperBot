@@ -1,6 +1,5 @@
 import asyncio
 import json
-import logging
 from dataclasses import dataclass
 from enum import Enum
 
@@ -8,9 +7,9 @@ from aio_pika import connect
 from aio_pika.abc import AbstractIncomingMessage
 from asyncpraw.models import Submission
 from asyncpraw import Reddit
-from asyncprawcore.exceptions import RequestException
+from asyncprawcore.exceptions import RequestException, ResponseException
 
-from utils import async_database_ctx, get_rabbitmq_auth, get_mysql_auth, get_reddit_auth
+from utils import async_database_ctx, get_rabbitmq_auth, get_mysql_auth, get_reddit_auth, get_logger
 from .rules import RuleBook
 
 
@@ -37,7 +36,7 @@ class ModeratorWorker:
         self.mysql_auth = get_mysql_auth(docker)
         self.rabbitmq_auth = get_rabbitmq_auth(docker)
         self.reddit_auth = get_reddit_auth()
-        self.log = logging.getLogger(__name__)
+        self.log = get_logger(self.__class__.__name__)
 
     async def run(self):
         connection = await connect(**self.rabbitmq_auth)
@@ -61,8 +60,10 @@ class ModeratorWorker:
             async with message.process(requeue=True):
                 submission_id = str(message.body.decode())
                 await self.moderate_submission(submission_id)
-        except RequestException as e:
+        except (RequestException, ResponseException) as e:
             self.log.error("Failed to moderate submission %s: %s", submission_id, e)
+        except Exception as e:
+            self.log.exception("Unknown error: %s", e)
 
     async def moderate_submission(self, submission_id: str) -> ModeratorWorkerResponse:
         response = ModeratorWorkerResponse(removed=False)
@@ -102,7 +103,13 @@ class ModeratorWorker:
                     await submission.mod.remove()
                     response.removed = True
                     response.comment_id = comment.id
-                    self.log.info(f"Removed submission {submission_id} from r/{submission.subreddit.display_name}")
+                    self.log.info(
+                        f"Removed submission {submission_id} from r/{submission.subreddit.display_name}",
+                        extra={"context": {
+                            "url": f"https://redd.it/{submission_id}",
+                            "subreddit": f"r/{submission.subreddit.display_name}",
+                        }}
+                    )
                 await db.execute('UPDATE submissions SET moderated=TRUE WHERE id=%s', submission_id)
         response.status = ModeratorWorkerStatus.MODERATED
         return response

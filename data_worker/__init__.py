@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import re
 from io import BytesIO
 from typing import Any
@@ -8,12 +7,12 @@ from aiohttp import ClientSession
 from aiohttp_retry import RetryClient
 from asyncpraw import Reddit
 from asyncpraw.models import Submission
-from asyncprawcore.exceptions import RequestException
+from asyncprawcore.exceptions import RequestException, ResponseException
 from aio_pika import connect
 from aio_pika.abc import AbstractIncomingMessage
 from PIL import UnidentifiedImageError, Image
 
-from utils import async_database_ctx, get_mysql_auth, get_rabbitmq_auth, get_reddit_auth, get_imgur_auth
+from utils import async_database_ctx, get_mysql_auth, get_rabbitmq_auth, get_reddit_auth, get_imgur_auth, get_logger
 from .extractors import (
     IMGUR_REGEX_STR,
     REDDIT_REGEX_STR,
@@ -34,7 +33,7 @@ class DataWorker:
         self.image_session = None
         self.extract_session = None
         self.headers = {"User-Agent": self.reddit_auth["user_agent"]}
-        self.log = logging.getLogger(__name__)
+        self.log = get_logger(self.__class__.__name__)
 
     async def run(self):
         connection = await connect(**self.rabbitmq_auth)
@@ -58,8 +57,10 @@ class DataWorker:
             async with message.process(requeue=True):
                 submission_id = str(message.body.decode())
                 await self.process_submission(submission_id)
-        except RequestException as e:
+        except (RequestException, ResponseException) as e:
             self.log.error("Failed to retrieve submission %s from reddit: %s", submission_id, e)
+        except Exception as e:
+            self.log.exception("Unknown error: %s", e)
 
     async def process_submission(self, submission_id: str):
         async with Reddit(**self.reddit_auth, timeout=30) as reddit:
@@ -75,7 +76,14 @@ class DataWorker:
             async with async_database_ctx(self.mysql_auth) as db:
                 await db.execute('INSERT IGNORE INTO submissions(id,subreddit,created_utc,removed,deleted,approved) VALUES(%s,%s,%s,%s,%s,%s)', submission_values)
                 await db.executemany('INSERT IGNORE INTO images(submission_id,url,width,height) VALUES (%s,%s,%s,%s)', images_values)
-            self.log.info(f"Processed submission {submission_id} with {len(images_values)} images in r/{subreddit}")
+            self.log.info(
+                f"Processed submission {submission_id}",
+                extra={"context": {
+                    "url": f"https://redd.it/{submission_id}",
+                    "subreddit": f"r/{subreddit}",
+                    "num_images": len(images_values)
+                }}
+            )
 
     async def _process_images(self, submission: Submission) -> list[tuple[str, int, int] | Any]:
         urls = await self.extract_image_urls(submission)
