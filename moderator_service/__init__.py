@@ -9,7 +9,7 @@ from hashlib import md5
 # from enum import Enum
 
 from asyncpraw import Reddit
-from asyncprawcore.exceptions import NotFound, RequestException
+from asyncprawcore.exceptions import NotFound, RequestException, ResponseException
 from aio_pika import DeliveryMode, Message, connect
 import oyaml as yaml
 from yaml.scanner import ScannerError
@@ -38,7 +38,7 @@ class ModeratorService:
                     try:
                         await self.update_settings()
                         await self._enqueue_submissions_to_moderate(exchange)
-                    except RequestException as e:
+                    except (RequestException, ResponseException) as e:
                         self.log.error("Failed to update settings from reddit: %s", e)
                     finally:
                         await asyncio.sleep(60)
