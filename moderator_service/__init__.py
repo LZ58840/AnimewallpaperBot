@@ -1,12 +1,8 @@
 import asyncio
 import json
-import logging
 import time
 from copy import deepcopy
 from hashlib import md5
-
-# from dataclasses import dataclass
-# from enum import Enum
 
 from asyncpraw import Reddit
 from asyncprawcore.exceptions import NotFound, RequestException, ResponseException
@@ -14,7 +10,14 @@ from aio_pika import DeliveryMode, Message, connect
 import oyaml as yaml
 from yaml.scanner import ScannerError
 
-from utils import async_database_ctx, get_mysql_auth, get_rabbitmq_auth, get_reddit_auth, get_default_settings
+from utils import (
+    async_database_ctx,
+    get_mysql_auth,
+    get_rabbitmq_auth,
+    get_reddit_auth,
+    get_default_settings,
+    get_logger
+)
 
 
 class ModeratorService:
@@ -27,7 +30,7 @@ class ModeratorService:
         self.rabbitmq_auth = get_rabbitmq_auth(docker)
         self.reddit_auth = get_reddit_auth()
         self.default_settings = get_default_settings()
-        self.log = logging.getLogger(__name__)
+        self.log = get_logger(self.__class__.__name__)
 
     async def run(self):
         connection = await connect(**self.rabbitmq_auth)
@@ -40,6 +43,8 @@ class ModeratorService:
                         await self._enqueue_submissions_to_moderate(exchange)
                     except (RequestException, ResponseException) as e:
                         self.log.error("Failed to update settings from reddit: %s", e)
+                    except Exception as e:
+                        self.log.exception("Unknown error: %s", e)
                     finally:
                         await asyncio.sleep(60)
 
