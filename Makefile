@@ -32,7 +32,7 @@ stop_dc:
 	./deployments/stop-deps.sh
 
 update_git:
-    	git pull
+	git pull
 
 update: update_git
 update: restart
