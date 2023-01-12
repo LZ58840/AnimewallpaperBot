@@ -1,4 +1,4 @@
-.PHONY: start setup stop restart clean reset integ start_dc stop_dc
+.PHONY: start setup stop restart clean reset integ start_dc stop_dc update_git update
 
 start:
 	./deployments/start-prod.sh
@@ -30,3 +30,8 @@ integ:
 
 stop_dc:
 	./deployments/stop-deps.sh
+
+update_git:
+    git pull
+
+update: update_git restart

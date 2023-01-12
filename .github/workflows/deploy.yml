@@ -1,0 +1,20 @@
+name: Update Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update_ssh:
+    name: Update Production
+    runs-on: ubuntu-latest
+    steps:
+    - name: Execute Remote SSH Commands Using Key
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_KEY }}
+        script_stop: true
+        script: cd ${{ github.event.repository.name }} && make update
