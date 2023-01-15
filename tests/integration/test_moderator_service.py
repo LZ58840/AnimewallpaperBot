@@ -15,6 +15,7 @@ from utils import get_reddit_auth, get_mysql_auth, database_ctx
 
 class TestModeratorService(TestCase):
     settings_page_name = f'awb-integ-{int(time.time())}'
+    curr_revision_utc = None
 
     def setUp(self) -> None:
         self.reddit_mod = praw.Reddit(**get_reddit_auth())
@@ -53,6 +54,10 @@ class TestModeratorService(TestCase):
         except NotFound:
             raise Exception('Wiki page not found, please run init test.')
 
+    def tearDown(self):
+        with database_ctx(self.mysql_auth) as db:
+            db.execute('DELETE FROM subreddits WHERE name=%s', 'LZ58840')
+
 
 class TestWikiSettings(TestModeratorService):
     def test_should_init_new_wiki_if_not_exists(self):
@@ -62,15 +67,11 @@ class TestWikiSettings(TestModeratorService):
         got_subreddit_row = self.getSubredditRow()
         diff = DeepDiff(json.loads(got_subreddit_row['settings']), self.settings_factory.get_default_settings())
         self.assertEqual(diff, {})
-        self.assertEqual(got_subreddit_row['revision_utc'], self.getSettingsRevisionUTC(self.moderator_service.settings_page_name))
-
-    def test_should_update_changed_settings(self):
-        self.moderator_service.settings_page_name = self.settings_page_name
-        old_subreddit_row = self.getSubredditRow()
-        old_revision_utc = old_subreddit_row['revision_utc']
+        got_revision_utc = self.getSettingsRevisionUTC(self.moderator_service.settings_page_name)
+        self.assertEqual(got_subreddit_row['revision_utc'], got_revision_utc)
         self.insertSettingsWiki(self.settings_page_name, self.settings_factory.get_all_enabled())
         self.loop.run_until_complete(self.moderator_service.update_settings())
         got_subreddit_row = self.getSubredditRow()
         diff = DeepDiff(json.loads(got_subreddit_row['settings']), self.settings_factory.get_all_enabled())
         self.assertEqual(diff, {})
-        self.assertGreater(got_subreddit_row['revision_utc'], old_revision_utc)
+        self.assertGreater(got_subreddit_row['revision_utc'], got_revision_utc)

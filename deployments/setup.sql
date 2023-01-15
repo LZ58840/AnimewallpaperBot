@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS subreddits (
 CREATE TABLE IF NOT EXISTS submissions (
     id VARCHAR(20) PRIMARY KEY,
     subreddit VARCHAR(20) NOT NULL,
+    author VARCHAR(20) NOT NULL,
     created_utc INT NOT NULL,
     removed BOOL NOT NULL DEFAULT FALSE,
     deleted BOOL NOT NULL DEFAULT FALSE,

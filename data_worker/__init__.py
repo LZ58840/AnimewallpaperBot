@@ -70,11 +70,12 @@ class DataWorker:
             removed: bool = submission.banned_by is not None
             deleted: bool = submission.removed_by_category == "deleted"
             approved: bool = submission.approved_by is not None
+            author: str = submission.author.name
             images = await self._process_images(submission)
-            submission_values = (submission_id, subreddit, created_utc, removed, deleted, approved)
+            submission_values = (submission_id, subreddit, created_utc, author, removed, deleted, approved)
             images_values = [(submission_id, url, width, height) for url, width, height in images]
             async with async_database_ctx(self.mysql_auth) as db:
-                await db.execute('INSERT IGNORE INTO submissions(id,subreddit,created_utc,removed,deleted,approved) VALUES(%s,%s,%s,%s,%s,%s)', submission_values)
+                await db.execute('INSERT IGNORE INTO submissions(id,subreddit,created_utc,author,removed,deleted,approved) VALUES(%s,%s,%s,%s,%s,%s,%s)', submission_values)
                 await db.executemany('INSERT IGNORE INTO images(submission_id,url,width,height) VALUES (%s,%s,%s,%s)', images_values)
             self.log.info(
                 f"Processed submission {submission_id}",
