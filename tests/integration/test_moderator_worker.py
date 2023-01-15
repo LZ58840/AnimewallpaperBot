@@ -29,17 +29,17 @@ class TestModeratorWorker(TestCase):
     def insertSubredditRow(self, settings, latest_utc=None, revision_utc=None) -> None:
         subreddit_values = ('LZ58840', json.dumps(settings), latest_utc, revision_utc)
         with database_ctx(self.mysql_auth) as db:
-            db.execute('INSERT INTO subreddits VALUES (%s, %s, %s, %s)', subreddit_values)
+            db.execute('INSERT IGNORE INTO subreddits VALUES (%s, %s, %s, %s)', subreddit_values)
 
-    def insertSubmissionRow(self, s_id, created_utc, removed=False, deleted=False, approved=False, moderated=False) -> None:
-        submission_values = (s_id, 'LZ58840', created_utc, removed, deleted, approved, moderated)
+    def insertSubmissionRow(self, s_id, created_utc, author='LZ58845', removed=False, deleted=False, approved=False, moderated=False) -> None:
+        submission_values = (s_id, 'LZ58840', author, created_utc, removed, deleted, approved, moderated)
         with database_ctx(self.mysql_auth) as db:
-            db.execute('INSERT INTO submissions VALUES (%s, %s, %s, %s, %s, %s, %s)', submission_values)
+            db.execute('INSERT IGNORE INTO submissions VALUES (%s, %s, %s, %s, %s, %s, %s, %s)', submission_values)
 
     def insertImageRow(self, i_id, s_id, url, width, height) -> None:
         image_values = (i_id, s_id, url, width, height)
         with database_ctx(self.mysql_auth) as db:
-            db.execute('INSERT INTO images VALUES (%s, %s, %s, %s, %s)', image_values)
+            db.execute('INSERT IGNORE INTO images VALUES (%s, %s, %s, %s, %s)', image_values)
 
     def getSubmissionRow(self, s_id):
         with database_ctx(self.mysql_auth) as db:
@@ -107,7 +107,7 @@ class TestModeratorWorkerStatus(TestModeratorWorker):
         got_submission_row = self.getSubmissionRow(submission.id)
         self.assertTrue(got_submission_row['removed'])
         got_submission = self.reddit_mod.submission(submission.id)
-        self.assertEqual(got_submission.banned_by, "LZ58842")
+        self.assertEqual(got_submission.banned_by, "AnimewallpaperBot")
         self.assertEqual(got_submission.removed_by_category, "moderator")
 
     def test_should_only_refresh_deleted_submission(self):
@@ -180,7 +180,7 @@ class TestResolutionAny(TestModeratorWorker):
         self.assertTrue(response.removed)
         self.assertIsNotNone(response.comment_id)
         got_submission = self.reddit_mod.submission(submission.id)
-        self.assertEqual(got_submission.banned_by, "LZ58842")
+        self.assertEqual(got_submission.banned_by, "AnimewallpaperBot")
         self.assertEqual(got_submission.removed_by_category, "moderator")
         got_comment = self.reddit_mod.comment(response.comment_id)
         self.addCleanup(self.cleanUp, submissions=[submission], comments=[])
@@ -217,7 +217,7 @@ class TestResolutionMismatch(TestModeratorWorker):
         self.assertTrue(response.removed)
         self.assertIsNotNone(response.comment_id)
         got_submission = self.reddit_mod.submission(submission.id)
-        self.assertEqual(got_submission.banned_by, "LZ58842")
+        self.assertEqual(got_submission.banned_by, "AnimewallpaperBot")
         self.assertEqual(got_submission.removed_by_category, "moderator")
         got_comment = self.reddit_mod.comment(response.comment_id)
         self.addCleanup(self.cleanUp, submissions=[submission], comments=[])
@@ -255,7 +255,7 @@ class TestResolutionBad(TestModeratorWorker):
         self.assertTrue(response.removed)
         self.assertIsNotNone(response.comment_id)
         got_submission = self.reddit_mod.submission(submission.id)
-        self.assertEqual(got_submission.banned_by, "LZ58842")
+        self.assertEqual(got_submission.banned_by, "AnimewallpaperBot")
         self.assertEqual(got_submission.removed_by_category, "moderator")
         got_comment = self.reddit_mod.comment(response.comment_id)
         self.assertEqual(got_comment.author.name, self.reddit_mod.user.me().name)
@@ -265,7 +265,7 @@ class TestResolutionBad(TestModeratorWorker):
 
 class TestAspectRatioBad(TestModeratorWorker):
     def test_should_not_remove_proper_aspect_ratio_image(self):
-        self.insertSubredditRow(self.settings_factory.get_aspect_ratio_bad_enabled(None, '9:21 to 10:16', True))
+        self.insertSubredditRow(self.settings_factory.get_aspect_ratio_bad_enabled(None, '9:21 to 10:16'))
         title = f'AWB Test AspectRatioBad Single Image Good [144x256]'
         image = self.image_factory.get_placeholder_vertical_image()
         submission = self.makeSubmission(title=title, paths=[image])
@@ -280,7 +280,7 @@ class TestAspectRatioBad(TestModeratorWorker):
         self.assertIsNone(got_submission.removed_by_category)
 
     def test_should_remove_aspect_ratio_too_tall_image(self):
-        self.insertSubredditRow(self.settings_factory.get_aspect_ratio_bad_enabled('16:10 to none', None, True))
+        self.insertSubredditRow(self.settings_factory.get_aspect_ratio_bad_enabled('16:10 to none', None))
         title = f'AWB Test AspectRatioBad Single Image Too Tall [192x144]'
         image = self.image_factory.get_placeholder_horizontal_image_tall()
         submission = self.makeSubmission(title=title, paths=[image])
@@ -292,7 +292,7 @@ class TestAspectRatioBad(TestModeratorWorker):
         self.assertTrue(response.removed)
         self.assertIsNotNone(response.comment_id)
         got_submission = self.reddit_mod.submission(submission.id)
-        self.assertEqual(got_submission.banned_by, "LZ58842")
+        self.assertEqual(got_submission.banned_by, "AnimewallpaperBot")
         self.assertEqual(got_submission.removed_by_category, "moderator")
         got_comment = self.reddit_mod.comment(response.comment_id)
         self.assertEqual(got_comment.author.name, self.reddit_mod.user.me().name)
@@ -300,7 +300,7 @@ class TestAspectRatioBad(TestModeratorWorker):
         self.assertTrue(got_comment.stickied)
 
     def test_should_remove_aspect_too_wide_image(self):
-        self.insertSubredditRow(self.settings_factory.get_aspect_ratio_bad_enabled(None, '9:21 to 10:16', True))
+        self.insertSubredditRow(self.settings_factory.get_aspect_ratio_bad_enabled(None, '9:21 to 10:16'))
         title = f'AWB Test AspectRatioBad Single Image Too Wide [144x192]'
         image = self.image_factory.get_placeholder_vertical_image_wide()
         submission = self.makeSubmission(title=title, paths=[image])
@@ -312,12 +312,83 @@ class TestAspectRatioBad(TestModeratorWorker):
         self.assertTrue(response.removed)
         self.assertIsNotNone(response.comment_id)
         got_submission = self.reddit_mod.submission(submission.id)
-        self.assertEqual(got_submission.banned_by, "LZ58842")
+        self.assertEqual(got_submission.banned_by, "AnimewallpaperBot")
         self.assertEqual(got_submission.removed_by_category, "moderator")
         got_comment = self.reddit_mod.comment(response.comment_id)
         self.assertEqual(got_comment.author.name, self.reddit_mod.user.me().name)
         self.assertTrue(got_comment.distinguished)
         self.assertTrue(got_comment.stickied)
+
+class TestRateLimitAny(TestModeratorWorker):
+    def test_should_allow_up_to_limit(self):
+        self.insertSubredditRow(self.settings_factory.get_rate_limit_any_enabled(intvl=1, freq=3, inc_deleted=True))
+        image = self.image_factory.get_placeholder_vertical_image_wide()
+        cleanup_list = []
+        for i in range(3):
+            title = f'AWB Test RateLimitAny {i+1} [144x256]'
+            submission = self.makeSubmission(title=title, paths=[image])
+            cleanup_list.append(submission)
+            self.insertSubmissionRow(submission.id, submission.created_utc)
+            response = self.loop.run_until_complete(self.moderator_worker.moderate_submission(submission.id))
+            self.assertEqual(response.status, ModeratorWorkerStatus.MODERATED)
+            self.assertFalse(response.removed)
+            got_submission = self.reddit_mod.submission(submission.id)
+            self.assertIsNone(got_submission.banned_by)
+            self.assertIsNone(got_submission.removed_by_category)
+        self.addCleanup(self.cleanUp, submissions=cleanup_list, comments=[])
+
+    def test_should_remove_past_limit(self):
+        self.insertSubredditRow(self.settings_factory.get_rate_limit_any_enabled(intvl=1, freq=3, inc_deleted=True))
+        image = self.image_factory.get_placeholder_vertical_image()
+        cleanup_list = []
+        # Insert non-offending submissions
+        for i in range(3):
+            title = f'AWB Test RateLimitAny {i+1} [144x256]'
+            submission = self.makeSubmission(title=title, paths=[image])
+            cleanup_list.append(submission)
+            self.insertSubmissionRow(submission.id, submission.created_utc)
+            response = self.loop.run_until_complete(self.moderator_worker.moderate_submission(submission.id))
+            self.assertEqual(response.status, ModeratorWorkerStatus.MODERATED)
+            self.assertFalse(response.removed)
+            got_submission = self.reddit_mod.submission(submission.id)
+            self.assertIsNone(got_submission.banned_by)
+            self.assertIsNone(got_submission.removed_by_category)
+        # Insert offending submission
+        title = f'AWB Test RateLimitAny 4 [144x256]'
+        submission = self.makeSubmission(title=title, paths=[image])
+        cleanup_list.append(submission)
+        self.insertSubmissionRow(submission.id, submission.created_utc)
+        response = self.loop.run_until_complete(self.moderator_worker.moderate_submission(submission.id))
+        self.assertEqual(response.status, ModeratorWorkerStatus.MODERATED)
+        self.assertTrue(response.removed)
+        self.assertIsNotNone(response.comment_id)
+        got_submission = self.reddit_mod.submission(submission.id)
+        self.assertEqual(got_submission.banned_by, "AnimewallpaperBot")
+        self.assertEqual(got_submission.removed_by_category, "moderator")
+        got_comment = self.reddit_mod.comment(response.comment_id)
+        self.assertEqual(got_comment.author.name, self.reddit_mod.user.me().name)
+        self.assertTrue(got_comment.distinguished)
+        self.assertTrue(got_comment.stickied)
+        # Delete submission
+        submission.delete()
+        self.loop.run_until_complete(self.moderator_worker.moderate_submission(submission.id))
+        # Insert another submission
+        title = f'AWB Test RateLimitAny 5 [144x256]'
+        submission = self.makeSubmission(title=title, paths=[image])
+        cleanup_list.append(submission)
+        self.insertSubmissionRow(submission.id, submission.created_utc)
+        response = self.loop.run_until_complete(self.moderator_worker.moderate_submission(submission.id))
+        self.assertEqual(response.status, ModeratorWorkerStatus.MODERATED)
+        self.assertTrue(response.removed)
+        self.assertIsNotNone(response.comment_id)
+        got_submission = self.reddit_mod.submission(submission.id)
+        self.assertEqual(got_submission.banned_by, "AnimewallpaperBot")
+        self.assertEqual(got_submission.removed_by_category, "moderator")
+        got_comment = self.reddit_mod.comment(response.comment_id)
+        self.assertEqual(got_comment.author.name, self.reddit_mod.user.me().name)
+        self.assertTrue(got_comment.distinguished)
+        self.assertTrue(got_comment.stickied)
+        self.addCleanup(self.cleanUp, submissions=cleanup_list, comments=[])
 
 
 class TestFlair(TestModeratorWorker):
@@ -364,7 +435,7 @@ class TestFlair(TestModeratorWorker):
         self.assertTrue(response.removed)
         self.assertIsNotNone(response.comment_id)
         got_submission = self.reddit_mod.submission(submission.id)
-        self.assertEqual(got_submission.banned_by, "LZ58842")
+        self.assertEqual(got_submission.banned_by, "AnimewallpaperBot")
         self.assertEqual(got_submission.removed_by_category, "moderator")
         got_comment = self.reddit_mod.comment(response.comment_id)
         self.assertEqual(got_comment.author.name, self.reddit_mod.user.me().name)

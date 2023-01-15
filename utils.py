@@ -104,6 +104,12 @@ def get_default_settings():
             'enabled': False,
             'horizontal': None,
             'vertical': None
+        },
+        'RateLimitAny': {
+            'enabled': False,
+            'interval_hours': None,
+            'frequency': None,
+            'incl_deleted': False
         }
     }
 

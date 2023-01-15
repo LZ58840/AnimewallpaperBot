@@ -2,6 +2,7 @@ import logging
 import re
 from asyncio import Event, create_task, gather
 from utils import async_database_ctx, normal_round
+import time
 
 from asyncpraw.models import Submission
 
@@ -239,12 +240,67 @@ class AspectRatioBad(Rule):
             return None, None, None
 
 
+class RateLimitAny(Rule):
+    removal_comment = "\n\n- **Rate Limit Reached.**"
+    section_template = "\n\n\t- You cannot submit more than **{freq} posts in a {intvl}-hour period.** You submitted:"
+    active_template = "\n\n\t\t- [{submission_id}](https://redd.it/{submission_id}) ({dur})"
+    next_template = "\n\n\t- Please wait until **{next_time} UTC** to submit again. {incl_deleted}"
+    deleted_comment = "Deleted submissions will still be counted towards the rate limit."
+
+    async def evaluate(self,
+                       submission: Submission,
+                       removal_flag: Event,
+                       enabled: bool,
+                       interval_hours: int,
+                       frequency: int,
+                       incl_deleted: bool = True) -> str | None:
+        if not enabled:
+            return
+        interval_seconds = interval_hours * 3600
+        async with async_database_ctx(self.mysql_auth) as db:
+            await db.execute(f"SELECT s.id, s.created_utc, l.created_utc-s.created_utc AS seconds_since "
+                             f"FROM submissions s, (SELECT id, author, created_utc FROM submissions WHERE id=%s) l "
+                             f"WHERE s.author=l.author AND s.id!=l.id "
+                             f"{'AND NOT s.deleted' if not incl_deleted else ''} AND NOT s.removed "
+                             f"AND l.created_utc-s.created_utc<%s "
+                             f"ORDER BY s.created_utc DESC",
+                             (submission.id, interval_seconds))
+            rows = await db.fetchall()
+        if len(rows) >= frequency:
+            removal_flag.set()
+            active_str = [
+                self.active_template.format(
+                    submission_id=row["id"],
+                    dur=self.format_duration(row["seconds_since"])
+                ) for row in rows
+            ]
+            next_str = self.next_template.format(
+                next_time=time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(rows[-1]['created_utc'])),
+                incl_deleted=self.deleted_comment if incl_deleted else ''
+            )
+            return (self.removal_comment
+                    + self.section_template.format(freq=frequency, intvl=interval_hours)
+                    + ''.join(active_str)
+                    + next_str)
+
+    @staticmethod
+    def format_duration(sec_since: int):
+        total_minutes = sec_since // 60
+        duration_hour = total_minutes // 60
+        duration_minute = total_minutes % 60
+        if duration_minute == duration_hour == 0:
+            return 'just now'
+        hour_str = (f'{str(duration_hour)} hours' if duration_hour > 1 else f'1 hour' if duration_hour == 1 else '')
+        minute_str = (f', {str(duration_minute)} minutes' if duration_minute > 1 else f', 1 minute' if duration_minute == 1 else '')
+        return hour_str + minute_str + " prior"
+
+
 class RuleBook:
     prefix_comment = ("Thank you for contributing to r/{subreddit}! "
                       "Unfortunately, your submission was removed for the following reason{many}:")
-    signature_comment = ("\n\n*I am a bot, and this was performed automatically. Please [contact the moderators of this "
-                         "subreddit](https://reddit.com/message/compose/?to=/r/{subreddit}) if you have any questions "
-                         "or concerns.*")
+    signature_comment = ("\n\n*I am a bot, and this action was performed automatically. Please [contact the moderators "
+                         "of this subreddit](https://reddit.com/message/compose/?to=/r/{subreddit}) if you have any "
+                         "questions or concerns.*")
 
     def __init__(self, submission: Submission, settings, mysql_auth):
         self.submission = submission
@@ -325,6 +381,7 @@ active_rules: tuple[str, ...] = (
     ResolutionMismatch.__name__,
     ResolutionBad.__name__,
     AspectRatioBad.__name__,
+    RateLimitAny.__name__,
 )
 
 

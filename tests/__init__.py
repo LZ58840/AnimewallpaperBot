@@ -61,12 +61,21 @@ class SettingsFactory:
         return rbe_settings
 
     def get_aspect_ratio_bad_enabled(self, h_str, v_str):
-        rbe_settings = deepcopy(self.default_settings)
-        rbe_settings['enabled'] = True
-        rbe_settings['AspectRatioBad']['enabled'] = True
-        rbe_settings['AspectRatioBad']['horizontal'] = h_str
-        rbe_settings['AspectRatioBad']['vertical'] = v_str
-        return rbe_settings
+        arbe_settings = deepcopy(self.default_settings)
+        arbe_settings['enabled'] = True
+        arbe_settings['AspectRatioBad']['enabled'] = True
+        arbe_settings['AspectRatioBad']['horizontal'] = h_str
+        arbe_settings['AspectRatioBad']['vertical'] = v_str
+        return arbe_settings
+
+    def get_rate_limit_any_enabled(self, intvl, freq, inc_deleted):
+        rla_settings = deepcopy(self.default_settings)
+        rla_settings['enabled'] = True
+        rla_settings['RateLimitAny']['enabled'] = True
+        rla_settings['RateLimitAny']['interval_hours'] = intvl
+        rla_settings['RateLimitAny']['frequency'] = freq
+        rla_settings['RateLimitAny']['incl_deleted'] = inc_deleted
+        return rla_settings
 
     def get_all_enabled(self):
         all_settings = deepcopy(self.default_settings)
@@ -83,5 +92,9 @@ class SettingsFactory:
         all_settings['AspectRatioBad']['enabled'] = True
         all_settings['AspectRatioBad']['horizontal'] = "16:10 to none"
         all_settings['AspectRatioBad']['vertical'] = "9:21 to 10:16"
+        all_settings['enabled'] = True
+        all_settings['interval_hours'] = 24
+        all_settings['frequency'] = 4
+        all_settings['inc_deleted'] = True
         return all_settings
 
