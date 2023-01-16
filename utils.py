@@ -110,6 +110,10 @@ def get_default_settings():
             'interval_hours': None,
             'frequency': None,
             'incl_deleted': False
+        },
+        'SourceCommentAny': {
+            'enabled': False,
+            'timeout_hrs': None,
         }
     }
 

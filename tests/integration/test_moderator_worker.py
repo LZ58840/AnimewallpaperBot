@@ -319,10 +319,47 @@ class TestAspectRatioBad(TestModeratorWorker):
         self.assertTrue(got_comment.distinguished)
         self.assertTrue(got_comment.stickied)
 
+
+class TestSourceCommentAny(TestModeratorWorker):
+    def test_should_allow_on_source_comment(self):
+        self.insertSubredditRow(self.settings_factory.get_source_comment_any_enabled(1.7e-2))
+        title = f'AWB Test SourceCommentAny With Source [144x256]'
+        image = self.image_factory.get_placeholder_vertical_image()
+        submission = self.makeSubmission(title=title, paths=[image])
+        comment = submission.reply("[Source](https://example.com)")
+        self.addCleanup(self.cleanUp, submissions=[submission], comments=[comment])
+        self.insertSubmissionRow(submission.id, submission.created_utc)
+        response = self.loop.run_until_complete(self.moderator_worker.moderate_submission(submission.id))
+        self.assertEqual(response.status, ModeratorWorkerStatus.MODERATED)
+        self.assertFalse(response.removed)
+        got_submission = self.reddit_mod.submission(submission.id)
+        self.assertIsNone(got_submission.banned_by)
+        self.assertIsNone(got_submission.removed_by_category)
+
+    def test_should_remove_after_timeout(self):
+        self.insertSubredditRow(self.settings_factory.get_source_comment_any_enabled(1.7e-2))
+        title = f'AWB Test SourceCommentAny Without Source [144x256]'
+        image = self.image_factory.get_placeholder_vertical_image()
+        submission = self.makeSubmission(title=title, paths=[image])
+        self.addCleanup(self.cleanUp, submissions=[submission], comments=[])
+        self.insertSubmissionRow(submission.id, submission.created_utc)
+        response = self.loop.run_until_complete(self.moderator_worker.moderate_submission(submission.id))
+        self.assertEqual(response.status, ModeratorWorkerStatus.MODERATED)
+        self.assertTrue(response.removed)
+        self.assertIsNotNone(response.comment_id)
+        got_submission = self.reddit_mod.submission(submission.id)
+        self.assertEqual(got_submission.banned_by, "AnimewallpaperBot")
+        self.assertEqual(got_submission.removed_by_category, "moderator")
+        got_comment = self.reddit_mod.comment(response.comment_id)
+        self.assertEqual(got_comment.author.name, self.reddit_mod.user.me().name)
+        self.assertTrue(got_comment.distinguished)
+        self.assertTrue(got_comment.stickied)
+
+
 class TestRateLimitAny(TestModeratorWorker):
     def test_should_allow_up_to_limit(self):
         self.insertSubredditRow(self.settings_factory.get_rate_limit_any_enabled(intvl=1, freq=3, inc_deleted=True))
-        image = self.image_factory.get_placeholder_vertical_image_wide()
+        image = self.image_factory.get_placeholder_vertical_image()
         cleanup_list = []
         for i in range(3):
             title = f'AWB Test RateLimitAny {i+1} [144x256]'
