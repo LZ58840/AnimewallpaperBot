@@ -77,6 +77,13 @@ class SettingsFactory:
         rla_settings['RateLimitAny']['incl_deleted'] = inc_deleted
         return rla_settings
 
+    def get_source_comment_any_enabled(self, timeout):
+        sca_settings = deepcopy(self.default_settings)
+        sca_settings['enabled'] = True
+        sca_settings['SourceCommentAny']['enabled'] = True
+        sca_settings['SourceCommentAny']['timeout_hrs'] = timeout
+        return sca_settings
+
     def get_all_enabled(self):
         all_settings = deepcopy(self.default_settings)
         all_settings['enabled'] = True
@@ -92,9 +99,12 @@ class SettingsFactory:
         all_settings['AspectRatioBad']['enabled'] = True
         all_settings['AspectRatioBad']['horizontal'] = "16:10 to none"
         all_settings['AspectRatioBad']['vertical'] = "9:21 to 10:16"
-        all_settings['enabled'] = True
-        all_settings['interval_hours'] = 24
-        all_settings['frequency'] = 4
-        all_settings['inc_deleted'] = True
+        all_settings['RateLimitAny']['enabled'] = True
+        all_settings['RateLimitAny']['interval_hours'] = 24
+        all_settings['RateLimitAny']['frequency'] = 4
+        all_settings['RateLimitAny']['inc_deleted'] = True
+        all_settings['SourceCommentAny']['enabled'] = True
+        all_settings['SourceCommentAny']['timeout_hrs'] = 1.7e-2
+
         return all_settings
 

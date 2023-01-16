@@ -1,6 +1,6 @@
 import logging
 import re
-from asyncio import Event, create_task, gather
+from asyncio import Event, create_task, gather, wait_for, TimeoutError
 from utils import async_database_ctx, normal_round
 import time
 
@@ -240,6 +240,39 @@ class AspectRatioBad(Rule):
             return None, None, None
 
 
+class SourceCommentAny(Rule):
+    removal_comment = "\n\n- **Missing source in comments.** Timeout after {timeout} hour{many}."
+    description = ("\n\n\t- Please make a top level comment crediting the original source artwork/artist."
+                   "\n\n\t\t- If you are the original artist, you may credit yourself as such."
+                   "\n\n\t\t- If you edited this wallpaper, please provide the sources of all artworks used."
+                   "\n\n\t- Respect the artist and their work - do not impersonate, steal from, or infringe on the "
+                   "copyright of other artists.")
+
+    async def evaluate(self,
+                       submission: Submission,
+                       removal_flag: Event,
+                       enabled: bool,
+                       timeout_hrs: int):
+        if not enabled:
+            return
+        deadline_utc = submission.created_utc + 3600 * timeout_hrs
+        await submission.comments.replace_more(limit=None)
+        while deadline_utc > time.time():
+            try:
+                await wait_for(removal_flag.wait(), timeout=60)
+            except TimeoutError:
+                await submission.load()
+                comments = await submission.comments()
+                for comment in comments:
+                    if comment.author.name == submission.author.name:
+                        return
+                continue
+            else:
+                return
+        removal_flag.set()
+        return self.removal_comment.format(timeout=timeout_hrs, many='s' if timeout_hrs != 1 else '') + self.description
+
+
 class RateLimitAny(Rule):
     removal_comment = "\n\n- **Rate Limit Reached.**"
     section_template = "\n\n\t- You cannot submit more than **{freq} posts in a {intvl}-hour period.** You submitted:"
@@ -382,6 +415,7 @@ active_rules: tuple[str, ...] = (
     ResolutionBad.__name__,
     AspectRatioBad.__name__,
     RateLimitAny.__name__,
+    SourceCommentAny.__name__,
 )
 
 
