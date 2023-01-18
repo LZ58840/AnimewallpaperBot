@@ -172,7 +172,7 @@ def normal_round(num, ndigits=0):
 # Borrowed from https://github.com/regulad/dislog/blob/master/src/dislog/handler.py
 class DiscordWebhookHandler(Handler):
     _username = "AnimewallpaperBot"
-    _icon = None
+    _icon = "https://raw.githubusercontent.com/LZ58840/AnimewallpaperBot/main/pfp.png"
 
     def __init__(self, webhook_url: str, level: int = NOTSET, *, as_async: bool = False) -> None:
         super().__init__(level)
