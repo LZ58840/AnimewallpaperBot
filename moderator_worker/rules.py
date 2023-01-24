@@ -292,8 +292,9 @@ class RateLimitAny(Rule):
         interval_seconds = interval_hours * 3600
         async with async_database_ctx(self.mysql_auth) as db:
             await db.execute(f"SELECT s.id, s.created_utc, l.created_utc-s.created_utc AS seconds_since "
-                             f"FROM submissions s, (SELECT id, author, created_utc FROM submissions WHERE id=%s) l "
-                             f"WHERE s.author=l.author AND s.id!=l.id "
+                             f"FROM submissions s, (SELECT id, author, created_utc, subreddit "
+                             f"FROM submissions WHERE id=%s) l "
+                             f"WHERE s.author=l.author AND s.subreddit=l.subreddit AND s.id!=l.id "
                              f"{'AND NOT s.deleted' if not incl_deleted else ''} AND NOT s.removed "
                              f"AND l.created_utc-s.created_utc<%s "
                              f"ORDER BY s.created_utc DESC",
@@ -308,7 +309,7 @@ class RateLimitAny(Rule):
                 ) for row in rows
             ]
             next_str = self.next_template.format(
-                next_time=time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(rows[-1]['created_utc'])),
+                next_time=time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(rows[-1]['created_utc'] + interval_seconds)),
                 incl_deleted=self.deleted_comment if incl_deleted else ''
             )
             return (self.removal_comment
