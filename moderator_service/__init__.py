@@ -108,4 +108,5 @@ class ModeratorService:
             )
             enqueue_task = asyncio.create_task(exchange.publish(msg, routing_key=self.queue_name))
             enqueue_tasks.append(enqueue_task)
-        await asyncio.gather(*enqueue_tasks)
+        # TODO: ignore publishing errors
+        await asyncio.gather(*enqueue_tasks, return_exceptions=True)
