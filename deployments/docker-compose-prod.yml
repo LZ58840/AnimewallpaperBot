@@ -37,6 +37,7 @@ services:
       - rabbitmq:/var/lib/rabbitmq
       - ./rabbit/enabled_plugins:/etc/rabbitmq/enabled_plugins
       - ./rabbit/plugins:/usr/lib/rabbitmq/plugins
+      - ./rabbit/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
     networks:
       - awb
 
