@@ -58,14 +58,16 @@ class ModeratorWorker:
     async def on_message(self, message: AbstractIncomingMessage) -> None:
         try:
             async with message.process(requeue=True):
-                submission_id = str(message.body.decode())
-                await self.moderate_submission(submission_id)
+                msg_json = json.loads(str(message.body.decode()))
+                submission_id = msg_json.get('id')
+                filtered = msg_json.get('filtered')
+                await self.moderate_submission(submission_id, filtered)
         except (RequestException, ResponseException) as e:
             self.log.error("Failed to moderate submission %s: %s", submission_id, e)
         except Exception as e:
             self.log.exception("Unknown error: %s", e)
 
-    async def moderate_submission(self, submission_id: str) -> ModeratorWorkerResponse:
+    async def moderate_submission(self, submission_id: str, filtered: bool = False) -> ModeratorWorkerResponse:
         response = ModeratorWorkerResponse(removed=False)
         async with Reddit(**self.reddit_auth, timeout=30) as reddit:
             submission: Submission = await reddit.submission(submission_id)
@@ -73,7 +75,7 @@ class ModeratorWorker:
                 removed = submission.banned_by is not None
                 deleted = submission.removed_by_category == "deleted"
                 approved = submission.approved_by is not None
-                if any((removed, deleted, approved)):
+                if any((removed, deleted, approved)) and not filtered:
                     await db.execute('UPDATE submissions SET removed=%s,deleted=%s,approved=%s WHERE id=%s', (removed, deleted, approved, submission_id))
                     response.status = ModeratorWorkerStatus.REFRESHED
                     return response
