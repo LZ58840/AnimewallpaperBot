@@ -42,11 +42,20 @@ class ModeratorService:
                         await self.update_settings()
                         await self._enqueue_submissions_to_moderate(exchange)
                     except (RequestException, ResponseException) as e:
-                        self.log.error("Failed to update settings from reddit: %s", e)
+                        self.log.error("Failed to update attributes from reddit: %s", e)
                     except Exception as e:
                         self.log.exception("Unknown error: %s", e)
                     finally:
                         await asyncio.sleep(60)
+
+    async def update_filtered_submissions(self):
+        async with Reddit(**self.reddit_auth, timeout=30) as reddit:
+            mod_subreddit = await reddit.subreddit("mod")
+            return [
+                submission.id
+                async for submission in mod_subreddit.mod.modqueue(limit=None, only="submissions")
+                if submission.banned_by == "AutoModerator"
+            ]
 
     async def update_settings(self):
         async with async_database_ctx(self.mysql_auth) as db:
@@ -92,6 +101,8 @@ class ModeratorService:
         return None
 
     async def _enqueue_submissions_to_moderate(self, exchange):
+        # Refresh filtered submissions
+        filtered_submissions = await self.update_filtered_submissions()
         # TODO: fix window to 48 hours for now until posting frequency increases
         after_utc = int(time.time()) - 172800
         async with async_database_ctx(self.mysql_auth) as db:
@@ -99,8 +110,9 @@ class ModeratorService:
             submissions = await db.fetchall()
         enqueue_tasks = []
         for submission in submissions:
-            msg_body = submission['id'].encode()
-            dedup_header = md5(msg_body).hexdigest()
+            msg_json = json.dumps({"id": submission['id'], "filtered": (submission['id'] in filtered_submissions)})
+            msg_body = msg_json.encode()
+            dedup_header = md5(submission['id'].encode()).hexdigest()
             msg = Message(
                 msg_body,
                 delivery_mode=DeliveryMode.PERSISTENT,
