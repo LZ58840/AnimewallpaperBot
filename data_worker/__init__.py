@@ -93,7 +93,8 @@ class DataWorker:
         return [values for values in results if values is not None]
 
     async def extract_image_urls(self, submission: Submission) -> list[str]:
-        if (match := re.match(IMGUR_REGEX_STR, submission.url)) is not None:
+        url = submission.url_overridden_by_dest if hasattr(submission, "url_overridden_by_dest") else submission.url
+        if (match := re.match(IMGUR_REGEX_STR, url)) is not None:
             return await extract_from_imgur_url(
                 self.extract_session,
                 self.imgur_auth,
@@ -101,14 +102,14 @@ class DataWorker:
                 match.group('album_id'),
                 match.group('gallery_id')
             )
-        elif (match := re.match(REDDIT_REGEX_STR, submission.url)) is not None:
+        elif (match := re.match(REDDIT_REGEX_STR, url)) is not None:
             return await extract_from_reddit_url(
                 submission,
                 match.group('image_id'),
                 match.group('gallery_id')
             )
         else:
-            return [submission.url]
+            return [url]
 
     async def download_image_to_values(self, url) -> tuple[str, int, int] | None:
         if re.match(r"(https?://.*\.(?:png|jpg|jpeg))", url) is None:
