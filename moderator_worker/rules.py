@@ -219,9 +219,9 @@ class AspectRatioBad(Rule):
             return (f"between {threshold['tall'][0]}:{threshold['tall'][1]} ({threshold['tall'][2]}:1) "
                     f"and {threshold['wide'][0]}:{threshold['wide'][1]} ({threshold['wide'][2]}:1)")
         elif threshold['tall'][2] is not None:
-            return f"wider than {threshold['tall'][0]}:{threshold['tall'][1]} ({threshold['tall'][2]}:1)"
+            return f"of or wider than {threshold['tall'][0]}:{threshold['tall'][1]} ({threshold['tall'][2]}:1)"
         elif threshold['wide'][2] is not None:
-            return f"taller than {threshold['wide'][0]}:{threshold['wide'][1]} ({threshold['wide'][2]}:1)"
+            return f"of or taller than {threshold['wide'][0]}:{threshold['wide'][1]} ({threshold['wide'][2]}:1)"
         return ""
 
     def _parse_threshold(self, threshold_str):
@@ -245,6 +245,7 @@ class SourceCommentAny(Rule):
     description = ("\n\n\t- Please make a top level comment crediting the original source artwork/artist."
                    "\n\n\t\t- If you are the original artist, you may credit yourself as such."
                    "\n\n\t\t- If you edited this wallpaper, please provide the sources of all artworks used."
+                   "\n\n\t\t- If source is from official media, please cite the episode, chapter, volume, etc."
                    "\n\n\t- Respect the artist and their work - do not impersonate, steal from, or infringe on the "
                    "copyright of other artists.")
 
