@@ -348,7 +348,7 @@ class RuleBook:
     async def evaluate(self):
         tasks = [create_task(self._evaluate_with_rule(self.submission, name)) for name in active_rules]
         results = await gather(*tasks)
-        self.comments = [str(result) for result in results if result is not None]
+        self.comments.extend([str(result) for result in results if result is not None])
 
     async def _evaluate_with_rule(self, submission: Submission, name: str):
         if (got_rule := rule_from_name(name)(self.mysql_auth)) is not None:
