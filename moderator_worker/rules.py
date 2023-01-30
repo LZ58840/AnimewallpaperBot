@@ -327,8 +327,8 @@ class RateLimitAny(Rule):
         if duration_minute == duration_hour == 0:
             return 'just now'
         hour_str = (f'{str(duration_hour)} hours' if duration_hour > 1 else f'1 hour' if duration_hour == 1 else '')
-        minute_str = (f' {str(duration_minute)} minutes' if duration_minute > 1 else f', 1 minute' if duration_minute == 1 else '')
-        return hour_str + minute_str + " prior"
+        minute_str = (f', {str(duration_minute)} minutes' if duration_minute > 1 else f', 1 minute' if duration_minute == 1 else '')
+        return (hour_str + minute_str + " prior").lstrip(", ")
 
 
 class RuleBook:
