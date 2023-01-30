@@ -243,7 +243,8 @@ class AspectRatioBad(Rule):
 class SourceCommentAny(Rule):
     removal_comment = "\n\n- **Missing source in comments.** Timeout after {timeout} hour{many}."
     description = ("\n\n\t- Please make a top level comment crediting the original source artwork/artist."
-                   "\n\n\t\t- If you are the original artist, you may credit yourself as such."
+                   "\n\n\t\t- Try doing a search for the artwork on "
+                   "[SauceNAO](https://saucenao.com/) or [IQDB](https://iqdb.org/?css=1)."
                    "\n\n\t\t- If you edited this wallpaper, please provide the sources of all artworks used."
                    "\n\n\t\t- If source is from official media, please cite the episode, chapter, volume, etc."
                    "\n\n\t- Respect the artist and their work - do not impersonate, steal from, or infringe on the "
@@ -326,7 +327,7 @@ class RateLimitAny(Rule):
         if duration_minute == duration_hour == 0:
             return 'just now'
         hour_str = (f'{str(duration_hour)} hours' if duration_hour > 1 else f'1 hour' if duration_hour == 1 else '')
-        minute_str = (f', {str(duration_minute)} minutes' if duration_minute > 1 else f', 1 minute' if duration_minute == 1 else '')
+        minute_str = (f' {str(duration_minute)} minutes' if duration_minute > 1 else f', 1 minute' if duration_minute == 1 else '')
         return hour_str + minute_str + " prior"
 
 
