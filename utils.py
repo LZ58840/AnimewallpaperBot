@@ -92,6 +92,7 @@ def get_default_settings():
     return {
         'enabled': False,
         'flairs': {},
+        'except_authors': [],
         'ResolutionAny': {'enabled': False},
         'ResolutionMismatch': {'enabled': False},
         'ResolutionBad': {
