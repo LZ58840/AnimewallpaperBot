@@ -87,7 +87,7 @@ class ModeratorWorker:
                 await db.execute('SELECT settings FROM subreddits WHERE name=%s', submission.subreddit.display_name)
                 subreddit = await db.fetchone()
                 subreddit_settings = json.loads(subreddit['settings'])
-                if not subreddit_settings["enabled"]:
+                if not subreddit_settings["enabled"] or submission.author.name in subreddit_settings['except_authors']:
                     response.status = ModeratorWorkerStatus.SKIPPED
                     return response
                 # https://stackoverflow.com/a/67695802

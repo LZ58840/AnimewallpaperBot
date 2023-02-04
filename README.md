@@ -1,5 +1,5 @@
 ![](https://raw.githubusercontent.com/LZ58840/AnimewallpaperBot/main/banner.png)
-# AnimewallpaperBot v2.0
+# AnimewallpaperBot v2.0.1
 A specialized moderation bot for /r/Animewallpaper and possibly some other wallpaper subreddits I moderate.
 
 ## Features
