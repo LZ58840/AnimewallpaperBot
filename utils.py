@@ -17,6 +17,9 @@ from asyncio import AbstractEventLoop, get_running_loop
 from logging import Handler, NOTSET, LogRecord
 from discord_webhook import DiscordWebhook, AsyncDiscordWebhook, DiscordEmbed
 
+MIN_BACKOFF = 60
+MAX_BACKOFF = 3600
+
 dotenv_path = Path(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".env"))
 if not load_dotenv(dotenv_path=dotenv_path):
     print("Couldn't load the configuration file. "

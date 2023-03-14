@@ -5,11 +5,19 @@ from asyncpraw import Reddit
 from asyncprawcore.exceptions import RequestException, ResponseException
 from aio_pika import DeliveryMode, Message, connect
 
-from utils import async_database_ctx, get_mysql_auth, get_rabbitmq_auth, get_reddit_auth, get_logger
+from utils import (
+    async_database_ctx,
+    get_mysql_auth,
+    get_rabbitmq_auth,
+    get_reddit_auth,
+    get_logger,
+    MIN_BACKOFF,
+    MAX_BACKOFF
+)
 
 
 class DataService:
-    backoff_sec = 60
+    backoff_sec = MIN_BACKOFF
     exchange_name = "awb-exchange"
     queue_name = "submission-queue"
 
@@ -28,8 +36,10 @@ class DataService:
                     try:
                         new_submissions = await self._get_new_submissions()
                         await self.enqueue_new_submissions(exchange, new_submissions)
+                        self.backoff_sec = max(self.backoff_sec // 3, MIN_BACKOFF)
                     except (RequestException, ResponseException) as e:
                         self.log.error("Failed to get submissions from reddit: %s", e)
+                        self.backoff_sec = min(self.backoff_sec * 2, MAX_BACKOFF)
                     except Exception as e:
                         self.log.exception("Unknown error: %s", e)
                     finally:

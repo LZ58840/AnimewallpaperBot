@@ -16,11 +16,14 @@ from utils import (
     get_rabbitmq_auth,
     get_reddit_auth,
     get_default_settings,
-    get_logger
+    get_logger,
+    MIN_BACKOFF,
+    MAX_BACKOFF
 )
 
 
 class ModeratorService:
+    backoff_sec = MIN_BACKOFF
     settings_page_name = "awb"
     exchange_name = "awb-exchange"
     queue_name = "moderator-queue"
@@ -41,12 +44,14 @@ class ModeratorService:
                     try:
                         await self.update_settings()
                         await self._enqueue_submissions_to_moderate(exchange)
+                        self.backoff_sec = max(self.backoff_sec // 3, MIN_BACKOFF)
                     except (RequestException, ResponseException) as e:
                         self.log.error("Failed to update attributes from reddit: %s", e)
+                        self.backoff_sec = min(self.backoff_sec * 2, MAX_BACKOFF)
                     except Exception as e:
                         self.log.exception("Unknown error: %s", e)
                     finally:
-                        await asyncio.sleep(60)
+                        await asyncio.sleep(self.backoff_sec)
 
     async def update_filtered_submissions(self):
         async with Reddit(**self.reddit_auth, timeout=30) as reddit:
