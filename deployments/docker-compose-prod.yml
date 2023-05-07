@@ -99,6 +99,18 @@ services:
       - mysql
       - rabbitmq
 
+  acr-worker:
+    container_name: awb_acr_worker
+    build:
+      context: ..
+      dockerfile: ./acr_worker/Dockerfile
+    restart: on-failure
+    networks:
+      - awb
+    depends_on:
+      - mysql
+      - rabbitmq
+
 volumes:
   mysql:
   rabbitmq:

@@ -1,5 +1,5 @@
 ![](https://raw.githubusercontent.com/LZ58840/AnimewallpaperBot/main/banner.png)
-# AnimewallpaperBot v2.1.1
+# AnimewallpaperBot v2.5.0
 A specialized moderation bot for /r/Animewallpaper and possibly some other wallpaper subreddits I moderate.
 
 ## Features
@@ -8,6 +8,7 @@ A specialized moderation bot for /r/Animewallpaper and possibly some other wallp
 - Aspect Ratio Thresholds (AspectRatioBad)
 - Source Comment Detection (SourceCommentAny)
 - Rate Limiting (RateLimitAny)
+- Repost Detection (RepostAny)
 
 ## Quick Start Guide
 Complete and rename the file `.env-example` to `.env`. You will need a Reddit account with its client ID and client secret available, visit [this page](https://www.reddit.com/prefs/apps/) to register. To get a refresh token, visit [this page](https://asyncpraw.readthedocs.io/en/stable/tutorials/refresh_token.html#refresh-token) and follow the instructions. To access the Imgur API, you will also need a client ID, visit [this page](https://apidocs.imgur.com/) to register. To run the tests, you will need a second account (with client ID and secret) to act as a regular user.
@@ -33,7 +34,7 @@ Once added, the program will auto-generate in your subreddit wiki a default conf
 - `restart` - stop and start the deployment on docker-compose.
 - `clean` - stop deployment and clear any data volumes.
 - `reset` - clean and setup deployment.
-- `start_dc` - start dependencies only (RabbitMQ and MySQL).
+- `start_dc` - start dependencies only (RabbitMQ, Celery, and MySQL).
 - `stop_dc` - stop dependencies and clear data volumes.
 
 ## Testing

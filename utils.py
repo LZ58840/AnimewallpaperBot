@@ -58,12 +58,12 @@ def get_imgur_auth():
         _raise_env_missing(e)
 
 
-def get_mysql_auth(docker=False):
+def get_mysql_auth(docker=False, as_root=False):
     try:
         return {
             "host": "awb_mysql" if docker else "localhost",
-            "user": "animewallpaperbot",
-            "password": os.environ['MYSQL_PASS'],
+            "user": "root" if as_root else "animewallpaperbot",
+            "password": os.environ['MYSQL_ROOT_PASS'] if as_root else os.environ['MYSQL_PASS'],
             "db": "awb",
         }
 
