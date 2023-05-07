@@ -1,4 +1,5 @@
 CREATE DATABASE IF NOT EXISTS awb;
+CREATE DATABASE IF NOT EXISTS celery;
 USE awb;
 CREATE TABLE IF NOT EXISTS subreddits (
     name VARCHAR(20) PRIMARY KEY,
@@ -23,6 +24,7 @@ CREATE TABLE IF NOT EXISTS images (
     url VARCHAR(255) NOT NULL,
     width INT NOT NULL,
     height INT NOT NULL,
+    sift LONGBLOB DEFAULT NULL,
     UNIQUE KEY (submission_id, url),
     FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE
 );
