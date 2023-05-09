@@ -1,5 +1,5 @@
 ![](https://raw.githubusercontent.com/LZ58840/AnimewallpaperBot/main/banner.png)
-# AnimewallpaperBot v2.0.1
+# AnimewallpaperBot v2.1.0
 A specialized moderation bot for /r/Animewallpaper and possibly some other wallpaper subreddits I moderate.
 
 ## Features
@@ -37,7 +37,7 @@ Once added, the program will auto-generate in your subreddit wiki a default conf
 - `stop_dc` - stop dependencies and clear data volumes.
 
 ## Testing
-Run `make integ` to have unittest run all the integration tests. Testing is mostly outdated and slow, recommended not to run. Mostly for self reference.
+Run `make integ` to have unittest run all the integration tests. Testing is mostly outdated and slow. It was intended to test version 1.0.
 
 ## Credits
 - Profile picture: [source artwork by るびぃ on pixiv](https://www.pixiv.net/en/artworks/33861959)
