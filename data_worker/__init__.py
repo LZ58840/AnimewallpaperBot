@@ -103,6 +103,11 @@ class DataWorker:
                 match.group('gallery_id')
             )
         elif (match := re.match(REDDIT_REGEX_STR, url)) is not None:
+            # Submission is x-post, load original submission instead
+            gallery_id = match.group('gallery_id')
+            if gallery_id != submission.id:
+                async with Reddit(**self.reddit_auth, timeout=30) as reddit:
+                    submission = await reddit.submission(gallery_id)
             return await extract_from_reddit_url(
                 submission,
                 match.group('image_id'),
