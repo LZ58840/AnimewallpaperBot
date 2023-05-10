@@ -26,3 +26,9 @@ CREATE TABLE IF NOT EXISTS images (
     UNIQUE KEY (submission_id, url),
     FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE
 );
+CREATE EVENT IF NOT EXISTS
+    ClearArchivedSubmissions
+ON SCHEDULE EVERY 1 DAY
+DO
+    DELETE FROM submissions
+    WHERE TIMESTAMPDIFF(month, FROM_UNIXTIME(created_utc), NOW()) > 6;
