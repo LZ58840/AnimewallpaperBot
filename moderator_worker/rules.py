@@ -331,6 +331,60 @@ class RateLimitAny(Rule):
         return (hour_str + minute_str + " prior").lstrip(", ")
 
 
+class ImageLimitAny(Rule):
+    base_comment = "\n\n- You can only submit {range} under the {flair} flair."
+    detected_comment = "\n\n\t- {n} images were detected."
+    rule_comment = ("\n\n\t- Please ensure that your submission contains a working direct link to each image and "
+                    "does not link to an unrecognized external webpage.")
+    video_comment = "\n\n\t- Videos are not supported under this flair. "
+    video_opt_comment = "Please use the following flair(s) instead: {flairs}"
+
+    async def evaluate(self,
+                       submission: Submission,
+                       removal_flag: Event,
+                       enabled: bool,
+                       flairs: dict,
+                       incl_videos: bool = True) -> str | None:
+        if not enabled:
+            return
+        flair_str = submission.link_flair_text
+        if flair_str not in flairs:
+            return
+        flair_limits = self.parse_flair_limits(flairs[flair_str])
+        async with async_database_ctx(self.mysql_auth) as db:
+            await db.execute(f"SELECT id from images where submission_id=%s", (submission.id,))
+            rows = await db.fetchall()
+        if self.is_bound(len(rows), flair_limits):
+            removal_flag.set()
+            base_section = self.base_comment.format(range=self.get_flair_limits_str(flair_limits), flair=flair_str)
+            detected_section = self.detected_comment.format(n=len(rows))
+            video_section = self.video_comment if incl_videos else ""
+            return base_section + detected_section + video_section
+
+    @staticmethod
+    def parse_flair_limits(flair_str):
+        bound_str = flair_str.split(" to ")
+        bound_ints = []
+        for x in bound_str:
+            try:
+                bound_ints.append(int(x))
+            except ValueError:
+                bound_ints.append(None)
+        return bound_ints
+
+    @staticmethod
+    def get_flair_limits_str(flair_ints):
+        return (f"no more than {flair_ints[1]} image(s)" if flair_ints[0] is None
+                else f"at least {flair_ints[0]} image(s)" if flair_ints[1] is None
+                else f"between {flair_ints[0]} and {flair_ints[1]} images")
+
+    @staticmethod
+    def is_bound(n, range_ints):
+        over = n > range_ints[1] if range_ints[1] is not None else False
+        under = n < range_ints[0] if range_ints[0] is not None else False
+        return not over and not under
+
+
 class RuleBook:
     prefix_comment = ("Thank you for contributing to r/{subreddit}! "
                       "Unfortunately, your submission was removed for the following reason{many}:")
@@ -419,6 +473,7 @@ active_rules: tuple[str, ...] = (
     AspectRatioBad.__name__,
     RateLimitAny.__name__,
     SourceCommentAny.__name__,
+    ImageLimitAny.__name__
 )
 
 

@@ -96,6 +96,11 @@ def get_default_settings():
         'enabled': False,
         'flairs': {},
         'except_authors': [],
+        'ImageLimitAny': {
+            'enabled': False,
+            'incl_videos': False,
+            'flairs': {}
+        },
         'ResolutionAny': {'enabled': False},
         'ResolutionMismatch': {'enabled': False},
         'ResolutionBad': {
