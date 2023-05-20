@@ -299,7 +299,9 @@ class RateLimitAny(Rule):
             return
         interval_seconds = interval_hours * 3600
         async with async_database_ctx(self.mysql_auth) as db:
-            await db.execute(f"SELECT s.id, s.created_utc, l.created_utc-s.created_utc AS seconds_since "
+            await db.execute(f"SELECT s.id, s.created_utc, "
+                             f"TIMESTAMPDIFF(hour,FROM_UNIXTIME(s.created_utc),FROM_UNIXTIME(l.created_utc)) AS hours_since,"
+                             f"TIMESTAMPDIFF(minute,FROM_UNIXTIME(s.created_utc),FROM_UNIXTIME(l.created_utc)) AS minutes_since "
                              f"FROM submissions s, (SELECT id, author, created_utc, subreddit "
                              f"FROM submissions WHERE id=%s) l "
                              f"WHERE s.author=l.author AND s.subreddit=l.subreddit AND s.id!=l.id "
@@ -313,7 +315,7 @@ class RateLimitAny(Rule):
             active_str = [
                 self.active_template.format(
                     submission_id=row["id"],
-                    dur=self.format_duration(row["seconds_since"])
+                    dur=self.format_duration(row["hours_since"], row["minutes_since"])
                 ) for row in rows
             ]
             next_str = self.next_template.format(
@@ -326,15 +328,13 @@ class RateLimitAny(Rule):
                     + next_str)
 
     @staticmethod
-    def format_duration(sec_since: int):
-        total_minutes = sec_since // 60
-        duration_hour = total_minutes // 60
-        duration_minute = total_minutes % 60
-        if duration_minute == duration_hour == 0:
+    def format_duration(hours_since, minutes_since):
+        if hours_since == 0 and minutes_since == 0:
             return 'just now'
-        hour_str = (f'{str(duration_hour)} hours' if duration_hour > 1 else f'1 hour' if duration_hour == 1 else '')
+        duration_minute = minutes_since % 60
+        hour_str = (f'{hours_since} hours' if hours_since > 1 else f'1 hour' if hours_since == 1 else '')
         minute_str = (f', {str(duration_minute)} minutes' if duration_minute > 1 else f', 1 minute' if duration_minute == 1 else '')
-        return (hour_str + minute_str + " prior").lstrip(", ")
+        return (hour_str + minute_str + " ago").lstrip(", ")
 
 
 class RuleBook:
