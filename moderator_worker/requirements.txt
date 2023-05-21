@@ -1,0 +1,6 @@
+celery==5.2.7
+asyncpraw==7.7.0
+aio-pika==9.0.7
+aiomysql==0.1.1
+PyMySQL==1.0.3
+python-dotenv==1.0.0

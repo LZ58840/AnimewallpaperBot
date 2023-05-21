@@ -1,0 +1,4 @@
+celery==5.2.7
+aiomysql==0.1.1
+PyMySQL==1.0.3
+python-dotenv==1.0.0
