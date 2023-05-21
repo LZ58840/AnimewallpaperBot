@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from hashlib import md5
 
 from asyncpraw import Reddit
@@ -10,7 +11,6 @@ from utils import (
     get_mysql_auth,
     get_rabbitmq_auth,
     get_reddit_auth,
-    get_logger,
     MIN_BACKOFF,
     MAX_BACKOFF
 )
@@ -25,7 +25,7 @@ class DataService:
         self.mysql_auth = get_mysql_auth(docker)
         self.rabbitmq_auth = get_rabbitmq_auth(docker)
         self.reddit_auth = get_reddit_auth()
-        self.log = get_logger(self.__class__.__name__)
+        self.log = logging.getLogger(self.__class__.__name__)
 
     async def run(self):
         connection = await connect(**self.rabbitmq_auth)

@@ -6,6 +6,16 @@ version: '3.8'
 # https://stackoverflow.com/a/71771542
 
 services:
+  dozzle:
+    image: amir20/dozzle:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "80:8080"
+    environment:
+      DOZZLE_USERNAME: animewallpaperbot
+      DOZZLE_PASSWORD: ${DOZZLE_PASS?err}
+
   mysql:
     container_name: awb_mysql
     image: mysql:8.0.29
