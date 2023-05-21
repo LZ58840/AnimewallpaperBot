@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import time
 from copy import deepcopy
 from hashlib import md5
@@ -16,7 +17,6 @@ from utils import (
     get_rabbitmq_auth,
     get_reddit_auth,
     get_default_settings,
-    get_logger,
     MIN_BACKOFF,
     MAX_BACKOFF
 )
@@ -33,7 +33,7 @@ class ModeratorService:
         self.rabbitmq_auth = get_rabbitmq_auth(docker)
         self.reddit_auth = get_reddit_auth()
         self.default_settings = get_default_settings()
-        self.log = get_logger(self.__class__.__name__)
+        self.log = logging.getLogger(self.__class__.__name__)
 
     async def run(self):
         connection = await connect(**self.rabbitmq_auth)

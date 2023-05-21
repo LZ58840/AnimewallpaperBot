@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from dataclasses import dataclass
 from enum import Enum
 
@@ -9,7 +10,7 @@ from asyncpraw.models import Submission
 from asyncpraw import Reddit
 from asyncprawcore.exceptions import RequestException, ResponseException
 
-from utils import async_database_ctx, get_rabbitmq_auth, get_mysql_auth, get_reddit_auth, get_logger
+from utils import async_database_ctx, get_rabbitmq_auth, get_mysql_auth, get_reddit_auth
 from .rules import RuleBook
 
 
@@ -36,7 +37,7 @@ class ModeratorWorker:
         self.mysql_auth = get_mysql_auth(docker)
         self.rabbitmq_auth = get_rabbitmq_auth(docker)
         self.reddit_auth = get_reddit_auth()
-        self.log = get_logger(self.__class__.__name__)
+        self.log = logging.getLogger(self.__class__.__name__)
 
     async def run(self):
         connection = await connect(**self.rabbitmq_auth)
