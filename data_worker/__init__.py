@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import re
 from io import BytesIO
 from typing import Any
@@ -12,7 +13,7 @@ from aio_pika import connect
 from aio_pika.abc import AbstractIncomingMessage
 from PIL import UnidentifiedImageError, Image
 
-from utils import async_database_ctx, get_mysql_auth, get_rabbitmq_auth, get_reddit_auth, get_imgur_auth, get_logger
+from utils import async_database_ctx, get_mysql_auth, get_rabbitmq_auth, get_reddit_auth, get_imgur_auth
 from .extractors import (
     IMGUR_REGEX_STR,
     REDDIT_REGEX_STR,
@@ -33,7 +34,7 @@ class DataWorker:
         self.image_session = None
         self.extract_session = None
         self.headers = {"User-Agent": self.reddit_auth["user_agent"]}
-        self.log = get_logger(self.__class__.__name__)
+        self.log = logging.getLogger(self.__class__.__name__)
 
     async def run(self):
         connection = await connect(**self.rabbitmq_auth)
