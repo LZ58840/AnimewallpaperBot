@@ -264,6 +264,12 @@ class SourceCommentAny(Rule):
                 await wait_for(removal_flag.wait(), timeout=60)
             except TimeoutError:
                 await submission.load()
+                # Check if submission was manually moderated and cancel if yes
+                removed = submission.banned_by is not None and submission.banned_by != "AutoModerator"
+                deleted = submission.removed_by_category == "deleted"
+                approved = submission.approved_by is not None
+                if any((removed, deleted, approved)):
+                    return
                 comments = await submission.comments()
                 for comment in comments:
                     if comment.author.name == submission.author.name:
