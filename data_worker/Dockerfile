@@ -2,6 +2,8 @@
 
 FROM hdgigante/python-opencv:4.7.0-alpine
 
+RUN apk add gcc musl-dev mariadb-connector-c-dev
+
 COPY data_worker data_worker
 COPY utils.py utils.py
 COPY .env .env
