@@ -1,9 +1,11 @@
 import asyncio
 import logging
 import re
-from io import BytesIO
 from typing import Any
 
+import cv2
+import imutils
+import numpy as np
 from aiohttp import ClientSession
 from aiohttp_retry import RetryClient
 from asyncpraw import Reddit
@@ -11,9 +13,15 @@ from asyncpraw.models import Submission
 from asyncprawcore.exceptions import RequestException, ResponseException
 from aio_pika import connect
 from aio_pika.abc import AbstractIncomingMessage
-from PIL import UnidentifiedImageError, Image
 
-from utils import async_database_ctx, get_mysql_auth, get_rabbitmq_auth, get_reddit_auth, get_imgur_auth
+from utils import (
+    async_database_ctx,
+    get_mysql_auth,
+    get_rabbitmq_auth,
+    get_reddit_auth,
+    get_imgur_auth,
+    THUMBNAIL_SIZE
+)
 from .extractors import (
     IMGUR_REGEX_STR,
     REDDIT_REGEX_STR,
@@ -31,8 +39,7 @@ class DataWorker:
         self.rabbitmq_auth = get_rabbitmq_auth(docker)
         self.reddit_auth = get_reddit_auth()
         self.imgur_auth = get_imgur_auth()
-        self.image_session = None
-        self.extract_session = None
+        self.sift_detector = cv2.SIFT_create()
         self.headers = {"User-Agent": self.reddit_auth["user_agent"]}
         self.log = logging.getLogger(self.__class__.__name__)
 
@@ -74,20 +81,13 @@ class DataWorker:
             author: str = submission.author.name
             images = await self._process_images(submission)
             submission_values = (submission_id, subreddit, created_utc, author, removed, deleted, approved)
-            images_values = [(submission_id, url, width, height) for url, width, height in images]
+            images_values = [(submission_id, url, width, height, descriptors) for url, width, height, descriptors in images]
             async with async_database_ctx(self.mysql_auth) as db:
                 await db.execute('INSERT IGNORE INTO submissions(id,subreddit,created_utc,author,removed,deleted,approved) VALUES(%s,%s,%s,%s,%s,%s,%s)', submission_values)
-                await db.executemany('INSERT IGNORE INTO images(submission_id,url,width,height) VALUES (%s,%s,%s,%s)', images_values)
-            self.log.info(
-                f"Processed submission {submission_id}",
-                extra={"context": {
-                    "url": f"https://redd.it/{submission_id}",
-                    "subreddit": f"r/{subreddit}",
-                    "num_images": len(images_values)
-                }}
-            )
+                await db.executemany('INSERT IGNORE INTO images(submission_id,url,width,height,sift) VALUES (%s,%s,%s,%s,%s)', images_values)
+            self.log.info(f"Processed submission {submission_id}")
 
-    async def _process_images(self, submission: Submission) -> list[tuple[str, int, int] | Any]:
+    async def _process_images(self, submission: Submission) -> list[tuple[str, int, int, str] | Any]:
         urls = await self.extract_image_urls(submission)
         tasks = [asyncio.create_task(self.download_image_to_values(url)) for url in urls]
         results = await asyncio.gather(*tasks)
@@ -97,7 +97,6 @@ class DataWorker:
         url = submission.url_overridden_by_dest if hasattr(submission, "url_overridden_by_dest") else submission.url
         if (match := re.match(IMGUR_REGEX_STR, url)) is not None:
             return await extract_from_imgur_url(
-                self.extract_session,
                 self.imgur_auth,
                 match.group('image_id'),
                 match.group('album_id'),
@@ -117,25 +116,34 @@ class DataWorker:
         else:
             return [url]
 
-    async def download_image_to_values(self, url) -> tuple[str, int, int] | None:
+    async def download_image_to_values(self, url) -> tuple[str, int, int, str] | None:
         if re.match(r"(https?://.*\.(?:png|jpg|jpeg))", url) is None:
             return None
-        client = RetryClient(raise_for_status=False, client_session=self.image_session)
-        try:
-            async with client.request(method='GET', allow_redirects=False, url=url, headers=self.headers) as response:
-                if response.status != 200:
-                    return None
-                image_bytes = await response.content.read()
-                with Image.open(BytesIO(image_bytes)).convert("RGB") as image:
-                    width, height = image.size
-                    return url, width, height
-        except (UnidentifiedImageError, ValueError):
-            return None
+        async with RetryClient(raise_for_status=False) as client:
+            try:
+                async with client.request(method='GET', allow_redirects=False, url=url, headers=self.headers) as resp:
+                    if resp.status != 200:
+                        return None
+                    image_bytes = await resp.content.read()
+                    return self._get_image_values(url, image_bytes)
+            except Exception as e:
+                self.log.error(f"Unable to process {url}, got: %s", e)
+                return None
+
+    def _get_image_values(self, url, image_bytes) -> tuple[str, int, int, str]:
+        image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), 1)
+        height, width = image.shape[:2]
+        resized_image = imutils.resize(image, **{('width' if height >= width else 'height'): THUMBNAIL_SIZE})
+        _, descriptors = self.sift_detector.detectAndCompute(resized_image, None)
+        descriptors_blob = np.ndarray.dumps(descriptors)
+        return url, width, height, descriptors_blob
 
     async def make_all_sessions(self):
+        # DEPRECATED FUNCTION
         self.image_session = ClientSession(auto_decompress=False)
         self.extract_session = ClientSession()
 
     async def close_all_sessions(self):
+        # DEPRECATED FUNCTION
         await self.image_session.close()
         await self.extract_session.close()

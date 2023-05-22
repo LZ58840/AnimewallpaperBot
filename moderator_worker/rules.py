@@ -1,10 +1,15 @@
 import logging
 import re
 from asyncio import Event, create_task, gather, wait_for, TimeoutError
-from utils import async_database_ctx, normal_round
+from datetime import datetime
+
+from utils import async_database_ctx, normal_round, get_rabbitmq_auth, get_mysql_auth, get_reddit_auth
 import time
 
 from asyncpraw.models import Submission
+from asyncpraw import Reddit
+from celery import Celery
+from monthdelta import monthmod
 
 
 class Rule:
@@ -25,7 +30,7 @@ class ResolutionAny(Rule):
                        "enclosed in (parentheses) or [brackets]. If you are submitting a collection, "
                        "ensure all unique resolutions are tagged separately.")
 
-    async def evaluate(self, submission: Submission, removal_flag: Event, enabled: bool):
+    async def evaluate(self, submission: Submission, removal_flag: Event, warning_flag: Event, enabled: bool):
         if not enabled:
             return
         if re.search(self.resolution_tag_regex_str, submission.title) is None:
@@ -40,7 +45,7 @@ class ResolutionMismatch(Rule):
                        "the resolution{many} of your submitted image{many}.\n"
                        "\n\t- Tagged resolution{many} in title: {tagged}\n\n\t- Mismatched resolution{many}: {mismatched}")
 
-    async def evaluate(self, submission: Submission, removal_flag: Event, enabled: bool):
+    async def evaluate(self, submission: Submission, removal_flag: Event, warning_flag: Event, enabled: bool):
         if not enabled:
             return
         matches = re.findall(self.resolution_tag_regex_str, submission.title)
@@ -72,6 +77,7 @@ class ResolutionBad(Rule):
     async def evaluate(self,
                        submission: Submission,
                        removal_flag: Event,
+                       warning_flag: Event,
                        enabled: bool,
                        horizontal: str = None,
                        vertical: str = None,
@@ -143,6 +149,7 @@ class AspectRatioBad(Rule):
     async def evaluate(self,
                        submission: Submission,
                        removal_flag: Event,
+                       warning_flag: Event,
                        enabled: bool,
                        horizontal: str = None,
                        vertical: str = None):
@@ -253,6 +260,7 @@ class SourceCommentAny(Rule):
     async def evaluate(self,
                        submission: Submission,
                        removal_flag: Event,
+                       warning_flag: Event,
                        enabled: bool,
                        timeout_hrs: int):
         if not enabled:
@@ -284,7 +292,7 @@ class SourceCommentAny(Rule):
 
 
 class RateLimitAny(Rule):
-    removal_comment = "\n\n- **Rate Limit Reached.**"
+    removal_comment = "\n\n- **Rate limit reached.**"
     section_template = "\n\n\t- You cannot submit more than **{freq} posts in a {intvl}-hour period.** You submitted:"
     active_template = "\n\n\t\t- [{submission_id}](https://redd.it/{submission_id}) ({dur})"
     next_template = "\n\n\t- Please wait until **{next_time} UTC** to submit again. {incl_deleted}"
@@ -293,6 +301,7 @@ class RateLimitAny(Rule):
     async def evaluate(self,
                        submission: Submission,
                        removal_flag: Event,
+                       warning_flag: Event,
                        enabled: bool,
                        interval_hours: int,
                        frequency: int,
@@ -339,7 +348,106 @@ class RateLimitAny(Rule):
         return (hour_str + minute_str + " ago").lstrip(", ")
 
 
+reddit_auth = get_reddit_auth()
+rabbitmq_auth = get_rabbitmq_auth(True)
+mysql_auth = get_mysql_auth(True, as_root=True)
+acr_app = Celery('match_app',
+                 backend=f'db+mysql://root:{mysql_auth["password"]}@{mysql_auth["host"]}/celery',
+                 broker=f'pyamqp://{rabbitmq_auth["login"]}:{rabbitmq_auth["password"]}@{rabbitmq_auth["host"]}//')
+
+
+class RepostAny(Rule):
+    removal_comment = "\n\n- **Repost detected.**"
+    section_comment = "\n\n\t- Please avoid reposting images submitted in the last {n} month{pl}."
+    match_str = "\n\n\t\t- [Image #{n}]({url}) matched submission [{match_submission}](https://redd.it/{match_submission}) ({dur}, [{pct:.2%} certainty](match_url))"
+
+    async def evaluate(self,
+                       submission: Submission,
+                       removal_flag: Event,
+                       warning_flag: Event,
+                       enabled: bool,
+                       report_only: bool,
+                       similarity_pct: float,
+                       threshold_months: int) -> str | None:
+        if not enabled:
+            return
+        acr_task = acr_app.send_task('get_similarity', (submission.id, threshold_months, similarity_pct))
+        while not acr_task.ready():
+            try:
+                await wait_for(removal_flag.wait(), timeout=30)
+            except TimeoutError:
+                await submission.load()
+                # Check if submission was manually moderated and cancel if yes
+                removed = submission.banned_by is not None and submission.banned_by != "AutoModerator"
+                deleted = submission.removed_by_category == "deleted"
+                approved = submission.approved_by is not None
+                if any((removed, deleted, approved)):
+                    acr_app.control.revoke(acr_task, terminate=True)
+                    return
+                continue
+            else:
+                acr_app.control.revoke(acr_task, terminate=True)
+                return
+        results = acr_task.get()
+        results_formatted = await self.format_results(results, submission.created_utc)
+        if len(results_formatted) > 0:
+            removal_flag.set() if not report_only else warning_flag.set()
+            return (self.removal_comment +
+                    self.section_comment.format(n=threshold_months, pl='s' if threshold_months > 1 else '') +
+                    ''.join(results_formatted))
+
+    async def format_results(self, results: dict, created_utc):
+        results_str = []
+        created_dt = datetime.utcfromtimestamp(created_utc)
+        async with async_database_ctx(self.mysql_auth) as db:
+            for image_id, matches in results.items():
+                await db.execute('select url from submissions s join images i on s.id = i.submission_id where i.id=%s', image_id)
+                image_row = db.fetchall()
+                url = image_row['url']
+                for i, match in enumerate(matches):
+                    matched_id, pct = match
+                    await db.execute('select submission_id, url, created_utc from submissions s join images i on s.id = i.submission_id where i.id=%s', matched_id)
+                    match_row = db.fetchall()
+                    match_submission = match_row['submission_id']
+                    if not await self.submission_alive(match_submission):
+                        continue
+                    match_url = match_row['url']
+                    match_utc = match_row['created_utc']
+                    time_since = self.get_time_since(datetime.utcfromtimestamp(match_utc), created_dt)
+                    results_str.append(self.match_str.format(n=i+1, url=url, match_submission=match_submission, dur=time_since, pct=pct, match_url=match_url))
+        return results_str
+
+    @staticmethod
+    def get_time_since(dt_start: datetime, dt_end: datetime):
+        md, td = monthmod(dt_start, dt_end)
+        if md.months > 0:
+            return f"{md.months} month{'s' if md.months == 1 else ''} ago"
+        if td.days > 0:
+            return f"{td.days} day{'s' if td.days == 1 else ''} ago"
+        if td.seconds >= 3600:
+            hours = td.seconds // 3600
+            return f"{hours} hour{'s' if hours == 1 else ''} ago"
+        if td.seconds >= 60:
+            minutes = td.seconds // 60
+            return f"{minutes} minute{'s' if minutes == 1 else ''} ago"
+        return "just now"
+
+    @staticmethod
+    async def submission_alive(submission_id: str) -> bool:
+        async with Reddit(**reddit_auth, timeout=30) as reddit:
+            submission = await reddit.submission(submission_id)
+            async with async_database_ctx(mysql_auth) as db:
+                removed = submission.banned_by is not None
+                deleted = submission.removed_by_category == "deleted"
+                if removed or deleted:
+                    await db.execute('UPDATE submissions SET removed=%s,deleted=%s WHERE id=%s', (removed, deleted, submission_id))
+                    return False
+        return True
+
+
 class RuleBook:
+    warning_comment = ("Thank you for contributing to r/{subreddit}! "
+                       "This submission was flagged for manual review due to the following reason{many}:")
     prefix_comment = ("Thank you for contributing to r/{subreddit}! "
                       "Unfortunately, your submission was removed for the following reason{many}:")
     signature_comment = ("\n\n*I am a bot, and this action was performed automatically. Please [contact the moderators "
@@ -350,6 +458,7 @@ class RuleBook:
         self.submission = submission
         self.settings = settings
         self.removal_flag = Event()
+        self.warning_flag = Event()
         self.skip_flag = Event()
         self.comments = []
         self.mysql_auth = mysql_auth
@@ -362,7 +471,10 @@ class RuleBook:
 
     async def _evaluate_with_rule(self, submission: Submission, name: str):
         if (got_rule := rule_from_name(name)(self.mysql_auth)) is not None:
-            return await got_rule.evaluate(**self.settings[name], submission=submission, removal_flag=self.removal_flag)
+            return await got_rule.evaluate(**self.settings[name],
+                                           submission=submission,
+                                           removal_flag=self.removal_flag,
+                                           warning_flag=self.warning_flag)
 
     async def evaluate_flair(self):
         # TODO: option to enforce image vs gallery filter (i.e. "image, gallery")
@@ -412,6 +524,16 @@ class RuleBook:
     def should_skip(self):
         return self.skip_flag.is_set()
 
+    def should_warn(self):
+        return self.warning_flag.is_set()
+
+    def get_warning_comment(self):
+        subreddit = self.submission.subreddit.display_name
+        many = "s" if len(self.comments) != 1 else ''
+        return (self.warning_comment.format(subreddit=subreddit, many=many)
+                + ''.join(self.comments)
+                + self.signature_comment.format(subreddit=subreddit))
+
     def get_removal_comment(self):
         subreddit = self.submission.subreddit.display_name
         many = "s" if len(self.comments) != 1 else ''
@@ -421,12 +543,12 @@ class RuleBook:
 
 
 active_rules: tuple[str, ...] = (
-    ResolutionAny.__name__,
     ResolutionMismatch.__name__,
     ResolutionBad.__name__,
     AspectRatioBad.__name__,
     RateLimitAny.__name__,
     SourceCommentAny.__name__,
+    RepostAny.__name__,
 )
 
 

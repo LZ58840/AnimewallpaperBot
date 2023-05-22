@@ -8,27 +8,27 @@ IMGUR_REGEX_STR = r"(^(http|https):\/\/)?(i\.)?imgur.com\/(gallery\/(?P<gallery_
 REDDIT_REGEX_STR = r"(^(http|https):\/\/)?(((i|preview)\.redd\.it\/)(?P<image_id>\w+\.\w+)|(www\.reddit\.com\/gallery\/)(?P<gallery_id>\w+))"
 
 
-async def extract_from_imgur_url(session, auth, image_id, album_id, gallery_id) -> list[str]:
+async def extract_from_imgur_url(auth, image_id, album_id, gallery_id) -> list[str]:
     request_url = "https://api.imgur.com/3/"
-    client = RetryClient(raise_for_status=False, client_session=session)
-    if image_id not in (None, '', '0'):
-        request_url += f"image/{image_id}"
-    elif album_id is not None:
-        request_url += f"album/{album_id}/images"
-    elif gallery_id is not None:
-        request_url += f"gallery/{gallery_id}/images"
-    async with client.request(method='GET', url=request_url, headers=auth) as response:
-        if response.status != 200:
-            logging.error(f"error getting {request_url} with {response.status}, skipping...")
-            return []
-        try:
-            response_json = await response.json()
-            if isinstance(response_json["data"], list):
-                return [image_json["link"] for image_json in response_json["data"]]
-            return [response_json["data"]["link"]]
-        except (ContentTypeError, KeyError):
-            logging.error(f"error parsing {request_url}, skipping...")
-            return []
+    async with RetryClient(raise_for_status=False) as client:
+        if image_id not in (None, '', '0'):
+            request_url += f"image/{image_id}"
+        elif album_id is not None:
+            request_url += f"album/{album_id}/images"
+        elif gallery_id is not None:
+            request_url += f"gallery/{gallery_id}/images"
+        async with client.request(method='GET', url=request_url, headers=auth) as response:
+            if response.status != 200:
+                logging.error(f"error getting {request_url} with {response.status}, skipping...")
+                return []
+            try:
+                response_json = await response.json()
+                if isinstance(response_json["data"], list):
+                    return [image_json["link"] for image_json in response_json["data"]]
+                return [response_json["data"]["link"]]
+            except (ContentTypeError, KeyError):
+                logging.error(f"error parsing {request_url}, skipping...")
+                return []
 
 
 async def extract_from_reddit_url(submission, image_id, gallery_id) -> list[str]:

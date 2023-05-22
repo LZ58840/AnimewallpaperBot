@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 
 MIN_BACKOFF = 60
 MAX_BACKOFF = 3600
+THUMBNAIL_SIZE = 256
 
 dotenv_path = Path(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".env"))
 if not load_dotenv(dotenv_path=dotenv_path):
@@ -88,7 +89,6 @@ def get_default_settings():
         'enabled': False,
         'flairs': {},
         'except_authors': [],
-        'ResolutionAny': {'enabled': False},
         'ResolutionMismatch': {'enabled': False},
         'ResolutionBad': {
             'enabled': False,
@@ -110,6 +110,12 @@ def get_default_settings():
         'SourceCommentAny': {
             'enabled': False,
             'timeout_hrs': None,
+        },
+        'RepostAny': {
+            'enabled': False,
+            'report_only': True,
+            'similarity_pct': .75,
+            'threshold_months': 6,
         }
     }
 
