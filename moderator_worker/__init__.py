@@ -112,7 +112,7 @@ class ModeratorWorker:
                     comment = await submission.reply(warn_comment_str)
                     await comment.mod.distinguish(sticky=True)
                     await comment.mod.remove()
-                    submission.report("Submission flagged for manual review (see comment)")
+                    await submission.report("Submission flagged for manual review (see comment)")
                     self.log.info(f"Flagged submission {submission_id} from r/{submission.subreddit.display_name} for manual review")
                 await db.execute('UPDATE submissions SET moderated=TRUE WHERE id=%s', submission_id)
         response.status = ModeratorWorkerStatus.MODERATED
