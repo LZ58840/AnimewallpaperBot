@@ -259,7 +259,7 @@ class SourceCommentAny(Rule):
             return
         deadline_utc = submission.created_utc + 3600 * timeout_hrs
         await submission.comments.replace_more(limit=None)
-        while deadline_utc > time.time():
+        while True:
             try:
                 await wait_for(removal_flag.wait(), timeout=60)
             except TimeoutError:
@@ -274,6 +274,8 @@ class SourceCommentAny(Rule):
                 for comment in comments:
                     if comment.author.name == submission.author.name:
                         return
+                if deadline_utc <= time.time():
+                    break
                 continue
             else:
                 return
