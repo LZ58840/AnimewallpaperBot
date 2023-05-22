@@ -16,8 +16,9 @@ def get_group_matcher(descriptor_rows):
     search_params = dict(checks=CHECKS)
     flann_matcher = cv2.FlannBasedMatcher(flann_params, search_params)
     for descriptor_row in descriptor_rows:
-        flann_matcher.add(pickle.loads(descriptor_row['sift']))
-    flann_matcher.train()
+        flann_matcher.add([pickle.loads(descriptor_row['sift'])])
+    if len(descriptor_rows) > 0:
+        flann_matcher.train()
     return flann_matcher
 
 

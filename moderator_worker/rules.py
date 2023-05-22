@@ -359,7 +359,7 @@ acr_app = Celery('match_app',
 class RepostAny(Rule):
     removal_comment = "\n\n- **Repost detected.**"
     section_comment = "\n\n\t- Please avoid reposting images submitted in the last {n} month{pl}."
-    match_str = "\n\n\t\t- [Image #{n}]({url}) matched submission [{match_submission}](https://redd.it/{match_submission}) ({dur}, [{pct:.2%} certainty](match_url))"
+    match_str = "\n\n\t\t- [Image #{n}]({url}) matched submission [{match_submission}](https://redd.it/{match_submission}) ({dur}, [{pct:.2%} certainty]({match_url}))"
 
     async def evaluate(self,
                        submission: Submission,
@@ -382,11 +382,11 @@ class RepostAny(Rule):
                 deleted = submission.removed_by_category == "deleted"
                 approved = submission.approved_by is not None
                 if any((removed, deleted, approved)):
-                    acr_app.control.revoke(acr_task, terminate=True)
+                    acr_app.control.revoke(acr_task.id, terminate=True)
                     return
                 continue
             else:
-                acr_app.control.revoke(acr_task, terminate=True)
+                acr_app.control.revoke(acr_task.id, terminate=True)
                 return
         results = acr_task.get()
         results_formatted = await self.format_results(results, submission.created_utc)
@@ -400,14 +400,14 @@ class RepostAny(Rule):
         results_str = []
         created_dt = datetime.utcfromtimestamp(created_utc)
         async with async_database_ctx(self.mysql_auth) as db:
-            for image_id, matches in results.items():
+            for i, match in enumerate(results.items()):
+                image_id, matches = match
                 await db.execute('select url from submissions s join images i on s.id = i.submission_id where i.id=%s', image_id)
-                image_row = db.fetchall()
+                image_row = await db.fetchone()
                 url = image_row['url']
-                for i, match in enumerate(matches):
-                    matched_id, pct = match
+                for matched_id, pct in matches:
                     await db.execute('select submission_id, url, created_utc from submissions s join images i on s.id = i.submission_id where i.id=%s', matched_id)
-                    match_row = db.fetchall()
+                    match_row = await db.fetchone()
                     match_submission = match_row['submission_id']
                     if not await self.submission_alive(match_submission):
                         continue
@@ -421,15 +421,15 @@ class RepostAny(Rule):
     def get_time_since(dt_start: datetime, dt_end: datetime):
         md, td = monthmod(dt_start, dt_end)
         if md.months > 0:
-            return f"{md.months} month{'s' if md.months == 1 else ''} ago"
+            return f"{md.months} month{'s' if md.months != 1 else ''} ago"
         if td.days > 0:
-            return f"{td.days} day{'s' if td.days == 1 else ''} ago"
+            return f"{td.days} day{'s' if td.days != 1 else ''} ago"
         if td.seconds >= 3600:
             hours = td.seconds // 3600
-            return f"{hours} hour{'s' if hours == 1 else ''} ago"
+            return f"{hours} hour{'s' if hours != 1 else ''} ago"
         if td.seconds >= 60:
             minutes = td.seconds // 60
-            return f"{minutes} minute{'s' if minutes == 1 else ''} ago"
+            return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
         return "just now"
 
     @staticmethod

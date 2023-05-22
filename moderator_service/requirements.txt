@@ -1,3 +1,4 @@
+cryptography==40.0.2
 oyaml==1.0
 asyncpraw==7.7.0
 aio-pika==9.0.7
