@@ -106,13 +106,14 @@ class ModeratorWorker:
                     await submission.mod.remove()
                     response.removed = True
                     response.comment_id = comment.id
-                    self.log.info(
-                        f"Removed submission {submission_id} from r/{submission.subreddit.display_name}",
-                        extra={"context": {
-                            "url": f"https://redd.it/{submission_id}",
-                            "subreddit": f"r/{submission.subreddit.display_name}",
-                        }}
-                    )
+                    self.log.info(f"Removed submission {submission_id} from r/{submission.subreddit.display_name}")
+                elif rulebook.should_warn():
+                    warn_comment_str = rulebook.get_warning_comment()
+                    comment = await submission.reply(warn_comment_str)
+                    await comment.mod.distinguish(sticky=True)
+                    await comment.mod.remove()
+                    submission.report("Submission flagged for manual review (see comment)")
+                    self.log.info(f"Flagged submission {submission_id} from r/{submission.subreddit.display_name} for manual review")
                 await db.execute('UPDATE submissions SET moderated=TRUE WHERE id=%s', submission_id)
         response.status = ModeratorWorkerStatus.MODERATED
         return response

@@ -19,11 +19,11 @@ app = Celery('acr_worker',
 
 # Define tasks here
 @app.task(name='get_similarity', ignore_result=False)
-def get_submission_similarity(submission_id: str, subreddit: str, threshold=.75):
+def get_submission_similarity(submission_id: str, threshold_months: int, sim_pct=.75):
     query_descriptors_rows = fetch_submission_descriptors(submission_id)
     if len(query_descriptors_rows) == 0:
         return {}
-    subreddit_descriptors_rows = fetch_subreddit_descriptors(subreddit, submission_id)
+    subreddit_descriptors_rows = fetch_subreddit_descriptors(submission_id, threshold_months)
     image_idx_map = [image_row['id'] for image_row in subreddit_descriptors_rows]
     group_matcher = get_group_matcher(subreddit_descriptors_rows)
     group_results = {
@@ -38,7 +38,7 @@ def get_submission_similarity(submission_id: str, subreddit: str, threshold=.75)
             for idx, _ in group_results[query_row['id']]
             if (pct := sigmoid(match_descriptors_to_descriptors(
                     query_row['sift'], subreddit_descriptors_rows[idx]['sift'], showdown_matcher
-                ))) > threshold]
+                ))) > sim_pct]
         for query_row in query_descriptors_rows
     }
     return showdown_results
@@ -51,15 +51,17 @@ def fetch_submission_descriptors(submission_id: str):
     return descriptors_rows
 
 
-def fetch_subreddit_descriptors(subreddit: str, except_submission_id: str = None):
-    sql_except_submission = ' AND i.submission_id!=%s' if except_submission_id is not None else ''
+def fetch_subreddit_descriptors(submission_id: str, threshold_months: int):
     sql_stmt = ('SELECT i.id, i.sift '
-                'FROM images i JOIN submissions s ON i.submission_id = s.id '
-                'WHERE s.subreddit=%s AND NOT s.removed AND NOT s.deleted AND i.sift IS NOT NULL')
-    sql_args = (except_submission_id, subreddit) if except_submission_id is not None else (subreddit,)
+                'FROM images i JOIN submissions s ON i.submission_id = s.id, '
+                '(SELECT subreddit, created_utc from submissions where id=%s) e '
+                'WHERE i.submission_id!=%s AND s.subreddit=e.subreddit AND NOT s.removed AND NOT s.deleted '
+                'AND i.sift IS NOT NULL '
+                'AND TIMESTAMPDIFF(month,FROM_UNIXTIME(s.created_utc),FROM_UNIXTIME(e.created_utc)) < %s')
+    sql_args = (submission_id, submission_id, threshold_months)
 
     with database_ctx(mysql_auth) as db:
-        db.execute(sql_stmt + sql_except_submission, sql_args)
+        db.execute(sql_stmt, sql_args)
         descriptors_rows = db.fetchall()
 
     return descriptors_rows
