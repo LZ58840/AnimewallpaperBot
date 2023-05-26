@@ -446,8 +446,6 @@ class RepostAny(Rule):
 
 
 class RuleBook:
-    warning_comment = ("Thank you for contributing to r/{subreddit}! "
-                       "This submission was flagged for manual review due to the following reason{many}:")
     prefix_comment = ("Thank you for contributing to r/{subreddit}! "
                       "Unfortunately, your submission was removed for the following reason{many}:")
     signature_comment = ("\n\n*I am a bot, and this action was performed automatically. Please [contact the moderators "
@@ -526,13 +524,6 @@ class RuleBook:
 
     def should_warn(self):
         return self.warning_flag.is_set()
-
-    def get_warning_comment(self):
-        subreddit = self.submission.subreddit.display_name
-        many = "s" if len(self.comments) != 1 else ''
-        return (self.warning_comment.format(subreddit=subreddit, many=many)
-                + ''.join(self.comments)
-                + self.signature_comment.format(subreddit=subreddit))
 
     def get_removal_comment(self):
         subreddit = self.submission.subreddit.display_name
