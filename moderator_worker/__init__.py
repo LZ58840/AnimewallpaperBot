@@ -108,7 +108,7 @@ class ModeratorWorker:
                     response.comment_id = comment.id
                     self.log.info(f"Removed submission {submission_id} from r/{submission.subreddit.display_name}")
                 elif rulebook.should_warn():
-                    warn_comment_str = rulebook.get_warning_comment()
+                    warn_comment_str = rulebook.get_removal_comment()
                     comment = await submission.reply(warn_comment_str)
                     await comment.mod.distinguish(sticky=True)
                     await comment.mod.remove()
