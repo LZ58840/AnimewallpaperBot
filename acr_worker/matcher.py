@@ -28,7 +28,7 @@ def get_showdown_matcher():
     return cv2.FlannBasedMatcher(flann_params, search_params)
 
 
-def sigmoid(x, b=0.5, o=20) -> float:
+def sigmoid(x, b=0.3, o=31) -> float:
     return 1. / (1 + math.exp(-b * (x - o)))
 
 
