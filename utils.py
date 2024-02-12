@@ -9,7 +9,7 @@ import pymysql
 import pymysql.cursors
 from dotenv import load_dotenv
 
-MIN_BACKOFF = 60
+MIN_BACKOFF = 120
 MAX_BACKOFF = 3600
 THUMBNAIL_SIZE = 256
 

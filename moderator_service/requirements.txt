@@ -1,7 +1,7 @@
-cryptography==40.0.2
+cryptography==43.0.0.dev1
 oyaml==1.0
-asyncpraw==7.7.0
-aio-pika==9.0.7
-aiomysql==0.1.1
-PyMySQL==1.0.3
-python-dotenv==1.0.0
+asyncpraw==7.7.1
+aio-pika==9.4.0
+aiomysql==0.2.0
+PyMySQL==1.1.0
+python-dotenv==1.0.1
