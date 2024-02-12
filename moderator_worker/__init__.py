@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import random
 from dataclasses import dataclass
 from enum import Enum
 
@@ -65,6 +66,7 @@ class ModeratorWorker:
                 await self.moderate_submission(submission_id, filtered)
         except (RequestException, ResponseException) as e:
             self.log.error("Failed to moderate submission %s: %s", submission_id, e)
+            await asyncio.sleep(random.randint(30, 60))
         except Exception as e:
             self.log.exception("Unknown error: %s", e)
 

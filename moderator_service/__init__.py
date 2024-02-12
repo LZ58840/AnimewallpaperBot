@@ -54,8 +54,15 @@ class ModeratorService:
                         await asyncio.sleep(self.backoff_sec)
 
     async def update_filtered_submissions(self):
+        # TODO: replace r/mod with combined names of all moderating subreddits
+        # TODO: replace with r/mod once this bug is fixed: https://redd.it/1ah69pk
+        async with async_database_ctx(self.mysql_auth) as db:
+            await db.execute('SELECT name, revision_utc FROM subreddits')
+            subreddits = await db.fetchall()
+        subreddits_str = '+'.join(subreddit["name"] for subreddit in subreddits)
+
         async with Reddit(**self.reddit_auth, timeout=30) as reddit:
-            mod_subreddit = await reddit.subreddit("mod")
+            mod_subreddit = await reddit.subreddit(subreddits_str)
             return [
                 submission.id
                 async for submission in mod_subreddit.mod.modqueue(limit=None, only="submissions")

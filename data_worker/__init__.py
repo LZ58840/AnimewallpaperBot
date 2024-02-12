@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 import re
 from typing import Any
 
@@ -67,6 +68,7 @@ class DataWorker:
                 await self.process_submission(submission_id)
         except (RequestException, ResponseException) as e:
             self.log.error("Failed to retrieve submission %s from reddit: %s", submission_id, e)
+            await asyncio.sleep(random.randint(30, 60))
         except Exception as e:
             self.log.exception("Unknown error: %s", e)
 
