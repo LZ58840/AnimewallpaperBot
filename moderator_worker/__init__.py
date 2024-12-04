@@ -11,7 +11,7 @@ from asyncpraw.models import Submission
 from asyncpraw import Reddit
 from asyncprawcore.exceptions import RequestException, ResponseException
 
-from utils import async_database_ctx, get_rabbitmq_auth, get_mysql_auth, get_reddit_auth
+from utils import async_database_ctx, get_rabbitmq_auth, get_mysql_auth, get_reddit_auth, MAX_BACKOFF, MIN_BACKOFF
 from .rules import RuleBook
 
 
@@ -31,6 +31,7 @@ class ModeratorWorkerResponse:
 
 
 class ModeratorWorker:
+    backoff_sec = MIN_BACKOFF
     exchange_name = "awb-exchange"
     queue_name = "moderator-queue"
 
@@ -58,17 +59,20 @@ class ModeratorWorker:
                 await asyncio.Future()
 
     async def on_message(self, message: AbstractIncomingMessage) -> None:
-        try:
-            async with message.process(requeue=True):
+        async with message.process(ignore_processed=True):
+            try:
                 msg_json = json.loads(str(message.body.decode()))
                 submission_id = msg_json.get('id')
                 filtered = msg_json.get('filtered')
                 await self.moderate_submission(submission_id, filtered)
-        except (RequestException, ResponseException) as e:
-            self.log.error("Failed to moderate submission %s: %s", submission_id, e)
-            await asyncio.sleep(random.randint(30, 60))
-        except Exception as e:
-            self.log.exception("Unknown error: %s", e)
+                self.backoff_sec = max(self.backoff_sec // 3, MIN_BACKOFF)
+            except (RequestException, ResponseException) as e:
+                self.log.error("Failed to moderate submission %s: %s", submission_id, e)
+                self.backoff_sec = min(self.backoff_sec * 2, MAX_BACKOFF)
+                await asyncio.sleep(self.backoff_sec + random.randint(0, 60))
+                await message.reject(requeue=True)
+            except Exception as e:
+                self.log.exception("Unknown error: %s", e)
 
     async def moderate_submission(self, submission_id: str, filtered: bool = False) -> ModeratorWorkerResponse:
         response = ModeratorWorkerResponse(removed=False)

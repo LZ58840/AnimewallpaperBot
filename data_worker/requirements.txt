@@ -1,9 +1,9 @@
-cryptography==43.0.0.dev1
+cryptography==44.0.0
 numpy==1.26.4
 imutils==0.5.4
-aiohttp-retry==2.8.3
-asyncpraw==7.7.1
-aio-pika==9.4.0
+aiohttp-retry==2.9.1
+asyncpraw==7.8.0
+aio-pika==9.5.3
 aiomysql==0.2.0
-PyMySQL==1.1.0
+PyMySQL==1.1.1
 python-dotenv==1.0.1

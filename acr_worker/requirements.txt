@@ -1,7 +1,7 @@
-cryptography==43.0.0.dev1
-mysqlclient==2.1.1
-SQLAlchemy==2.0.26
-celery==5.3.6
+cryptography==44.0.0
+mysqlclient==2.2.6
+SQLAlchemy==2.0.36
+celery==5.4.0
 aiomysql==0.2.0
-PyMySQL==1.1.0
+PyMySQL==1.1.1
 python-dotenv==1.0.1

@@ -21,7 +21,8 @@ from utils import (
     get_rabbitmq_auth,
     get_reddit_auth,
     get_imgur_auth,
-    THUMBNAIL_SIZE
+    THUMBNAIL_SIZE,
+    MIN_BACKOFF, MAX_BACKOFF
 )
 from .extractors import (
     IMGUR_REGEX_STR,
@@ -32,6 +33,7 @@ from .extractors import (
 
 
 class DataWorker:
+    backoff_sec = MIN_BACKOFF
     exchange_name = "awb-exchange"
     queue_name = "submission-queue"
 
@@ -62,15 +64,18 @@ class DataWorker:
                 await asyncio.Future()
 
     async def on_message(self, message: AbstractIncomingMessage) -> None:
-        try:
-            async with message.process(requeue=True):
+        async with message.process(ignore_processed=True):
+            try:
                 submission_id = str(message.body.decode())
                 await self.process_submission(submission_id)
-        except (RequestException, ResponseException) as e:
-            self.log.error("Failed to retrieve submission %s from reddit: %s", submission_id, e)
-            await asyncio.sleep(random.randint(30, 60))
-        except Exception as e:
-            self.log.exception("Unknown error: %s", e)
+                self.backoff_sec = max(self.backoff_sec // 3, MIN_BACKOFF)
+            except (RequestException, ResponseException) as e:
+                self.log.error("Failed to retrieve submission %s from reddit: %s", submission_id, e)
+                self.backoff_sec = min(self.backoff_sec * 2, MAX_BACKOFF)
+                await asyncio.sleep(self.backoff_sec + random.randint(0, 60))
+                await message.reject(requeue=True)
+            except Exception as e:
+                self.log.exception("Unknown error: %s", e)
 
     async def process_submission(self, submission_id: str):
         async with Reddit(**self.reddit_auth, timeout=30) as reddit:
